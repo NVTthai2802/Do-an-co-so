@@ -114,7 +114,7 @@ const LESSONS = {
   },
 };
 
-export default function DashboardContent() {
+function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lessonType = searchParams.get("lesson");

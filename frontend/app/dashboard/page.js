@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { clearSession, getToken, saveSession } from "../../lib/auth";
@@ -114,7 +114,7 @@ const LESSONS = {
   },
 };
 
-export default function DashboardPage() {
+export default function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lessonType = searchParams.get("lesson");
@@ -244,3 +244,15 @@ export default function DashboardPage() {
   );
 }
 
+// 2. TẠO COMPONENT MỚI ĐỂ BỌC SUSPENSE (ĐÂY LÀ CHÌA KHÓA FIX LỖI)
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <main className="dashboard-shell">
+        <section className="dashboard-card">Đang tải dữ liệu...</section>
+      </main>
+    }>
+      <DashboardContent />
+    </Suspense>
+  );
+}

@@ -343,7 +343,7 @@ input {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .chip-grid {

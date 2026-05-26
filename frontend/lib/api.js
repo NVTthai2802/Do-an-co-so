@@ -1,4 +1,4 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "production" ? "/_backend" : "http://localhost:8000");
 
 export async function request(path, { method = "GET", body, token } = {}) {
   const headers = {
@@ -23,4 +23,3 @@ export async function request(path, { method = "GET", body, token } = {}) {
 
   return data;
 }
-

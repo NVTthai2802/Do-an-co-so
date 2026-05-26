@@ -6,6 +6,9 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from database import get_db
+from models import User, Lesson
+from crud import create_user, get_lessons
 
 app = FastAPI(title="KidLearn API")
 

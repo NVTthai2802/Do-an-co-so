@@ -24,6 +24,8 @@ app = FastAPI(title="KidLearn API")
 # ── Đọc cấu hình từ .env ──────────────────────────────
 DEFAULT_LOCAL_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/kidlearn"
 LOCAL_DATABASE_HOSTS = {"localhost", "127.0.0.1", "::1"}
+SSL_MODE_ALIASES = {"req": "require"}
+VALID_SSL_MODES = {"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}
 LIBPQ_QUERY_PARAMS = {
     "application_name",
     "channel_binding",
@@ -64,6 +66,15 @@ def normalize_database_url(url: str) -> str:
         for key, value in query.items()
         if key in LIBPQ_QUERY_PARAMS
     }
+    sslmode = safe_query.get("sslmode")
+    if sslmode:
+        normalized_sslmode = SSL_MODE_ALIASES.get(sslmode.lower(), sslmode.lower())
+        if normalized_sslmode not in VALID_SSL_MODES:
+            raise DatabaseConfigError(
+                "sslmode trong DATABASE_URL khong hop le. Hay dung sslmode=require cho Neon."
+            )
+        safe_query["sslmode"] = normalized_sslmode
+
     if os.getenv("VERCEL") == "1" and parsed.hostname not in LOCAL_DATABASE_HOSTS:
         safe_query.setdefault("sslmode", "require")
 

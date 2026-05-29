@@ -73,5 +73,5 @@ Nếu form báo `Không kết nối được database Postgres`, kiểm tra tron
 
 - Không đặt `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kidlearn` cho Production/Preview. `localhost` trên Vercel là server của Vercel, không phải máy tính của bạn.
 - Nên dùng `POSTGRES_URL` từ Vercel Storage/Postgres, hoặc `DATABASE_URL` từ Neon/Supabase/cloud Postgres.
-- URL cloud nên có SSL, ví dụ `?sslmode=require`.
+- URL cloud nên có SSL, ví dụ `?sslmode=require`. Với Neon, không dùng `sslmode=req`.
 - Sau khi sửa Environment Variables, bấm Redeploy để backend nhận cấu hình mới.

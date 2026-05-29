@@ -75,3 +75,19 @@ Nếu form báo `Không kết nối được database Postgres`, kiểm tra tron
 - Nên dùng `POSTGRES_URL` từ Vercel Storage/Postgres, hoặc `DATABASE_URL` từ Neon/Supabase/cloud Postgres.
 - URL cloud nên có SSL, ví dụ `?sslmode=require`. Với Neon, không dùng `sslmode=req`.
 - Sau khi sửa Environment Variables, bấm Redeploy để backend nhận cấu hình mới.
+
+## Tính năng AI nhận diện số
+
+Backend có API `POST /api/recognize-number` để nhận ảnh Base64 từ camera và chạy model `best.pt`.
+
+Thiết lập local:
+
+```powershell
+cd backend
+py -m pip install -r requirements-ai.txt
+mkdir models
+copy C:\duong-dan\best.pt models\best.pt
+py main.py
+```
+
+Nếu chưa có `backend/models/best.pt` hoặc chưa cài `requirements-ai.txt`, app vẫn chạy; phần camera sẽ báo model chưa sẵn sàng.

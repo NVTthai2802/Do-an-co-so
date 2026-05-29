@@ -15,8 +15,10 @@ from passlib.context import CryptContext
 
 try:
     from db_schema import initialize_schema
+    from recognition import recognize_number_from_image
 except ImportError:
     from .db_schema import initialize_schema
+    from .recognition import recognize_number_from_image
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 app = FastAPI(title="KidLearn API")
@@ -199,6 +201,10 @@ class LoginReq(BaseModel):
     password: str
 
 
+class RecognizeNumberReq(BaseModel):
+    image: str
+
+
 # ── Routes ────────────────────────────────────────────
 @app.post("/auth/register")
 def register(req: RegisterReq):
@@ -293,6 +299,11 @@ def logout(authorization: Optional[str] = Header(None)):
         with get_db() as conn:
             conn.execute("DELETE FROM sessions WHERE token = %s", (token,))
     return {"message": "Đăng xuất thành công."}
+
+
+@app.post("/api/recognize-number")
+def recognize_number(req: RecognizeNumberReq):
+    return recognize_number_from_image(req.image)
 
 
 @app.get("/health")

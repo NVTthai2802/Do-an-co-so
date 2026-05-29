@@ -1,118 +1,80 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { clearSession, getToken, saveSession } from "../../lib/auth";
 import { request } from "../../lib/api";
+import { speakVietnamese } from "../../lib/speech";
 
-const VIETNAMESE_NUMBERS = [
-  "Không", "Một", "Hai", "Ba", "Bốn", "Năm", "Sáu", "Bảy", "Tám", "Chín",
-  "Mười", "Mười một", "Mười hai", "Mười ba", "Mười bốn", "Mười năm", "Mười sáu", "Mười bảy", "Mười tám", "Mười chín",
-  "Hai mươi", "Hai mươi một", "Hai mươi hai", "Hai mươi ba", "Hai mươi bốn", "Hai mươi năm", "Hai mươi sáu", "Hai mươi bảy", "Hai mươi tám", "Hai mươi chín",
-  "Ba mươi", "Ba mươi một", "Ba mươi hai", "Ba mươi ba", "Ba mươi bốn", "Ba mươi năm", "Ba mươi sáu", "Ba mươi bảy", "Ba mươi tám", "Ba mươi chín",
-  "Bốn mươi", "Bốn mươi một", "Bốn mươi hai", "Bốn mươi ba", "Bốn mươi bốn", "Bốn mươi năm", "Bốn mươi sáu", "Bốn mươi bảy", "Bốn mươi tám", "Bốn mươi chín",
-  "Năm mươi", "Năm mươi một", "Năm mươi hai", "Năm mươi ba", "Năm mươi bốn", "Năm mươi năm", "Năm mươi sáu", "Năm mươi bảy", "Năm mươi tám", "Năm mươi chín",
-  "Sáu mươi", "Sáu mươi một", "Sáu mươi hai", "Sáu mươi ba", "Sáu mươi bốn", "Sáu mươi năm", "Sáu mươi sáu", "Sáu mươi bảy", "Sáu mươi tám", "Sáu mươi chín",
-  "Bảy mươi", "Bảy mươi một", "Bảy mươi hai", "Bảy mươi ba", "Bảy mươi bốn", "Bảy mươi năm", "Bảy mươi sáu", "Bảy mươi bảy", "Bảy mươi tám", "Bảy mươi chín",
-  "Tám mươi", "Tám mươi một", "Tám mươi hai", "Tám mươi ba", "Tám mươi bốn", "Tám mươi năm", "Tám mươi sáu", "Tám mươi bảy", "Tám mươi tám", "Tám mươi chín",
-  "Chín mươi", "Chín mươi một", "Chín mươi hai", "Chín mươi ba", "Chín mươi bốn", "Chín mươi năm", "Chín mươi sáu", "Chín mươi bảy", "Chín mươi tám", "Chín mươi chín",
-  "Một trăm"
+const numbers = Array.from({ length: 10 }, (_, index) => index + 1);
+
+const numberWords = [
+  "",
+  "một",
+  "hai",
+  "ba",
+  "bốn",
+  "năm",
+  "sáu",
+  "bảy",
+  "tám",
+  "chín",
+  "mười",
 ];
 
-const getNumberRepresentation = (num) => {
-  if (num <= 20) {
-    return "●".repeat(num);
-  }
-  const grid_size = 5;
-  const rows = Math.ceil(num / grid_size);
-  const cols = Math.min(num, grid_size);
-  return `${rows}×${cols}`;
-};
+const letters = [
+  { id: "a", label: "A", word: "áo", icon: "👕" },
+  { id: "aw", label: "Ă", word: "ăn", icon: "🍚" },
+  { id: "aa", label: "Â", word: "ấm", icon: "🫖" },
+  { id: "b", label: "B", word: "bé", icon: "🧒" },
+  { id: "c", label: "C", word: "cá", icon: "🐟" },
+  { id: "d", label: "D", word: "dê", icon: "🐐" },
+  { id: "dd", label: "Đ", word: "đèn", icon: "💡" },
+  { id: "e", label: "E", word: "em", icon: "🙂" },
+  { id: "ee", label: "Ê", word: "ếch", icon: "🐸" },
+  { id: "g", label: "G", word: "gà", icon: "🐔" },
+  { id: "h", label: "H", word: "hoa", icon: "🌸" },
+  { id: "i", label: "I", word: "in", icon: "📄" },
+  { id: "k", label: "K", word: "kem", icon: "🍦" },
+  { id: "l", label: "L", word: "lá", icon: "🍃" },
+  { id: "m", label: "M", word: "mẹ", icon: "👩" },
+  { id: "n", label: "N", word: "nơ", icon: "🎀" },
+  { id: "o", label: "O", word: "ong", icon: "🐝" },
+  { id: "oo", label: "Ô", word: "ô tô", icon: "🚗" },
+  { id: "ow", label: "Ơ", word: "ớt", icon: "🌶️" },
+  { id: "p", label: "P", word: "phở", icon: "🍜" },
+  { id: "q", label: "Q", word: "quả", icon: "🍎" },
+  { id: "r", label: "R", word: "rổ", icon: "🧺" },
+  { id: "s", label: "S", word: "sao", icon: "⭐" },
+  { id: "t", label: "T", word: "tàu", icon: "🚂" },
+  { id: "u", label: "U", word: "uống", icon: "🥤" },
+  { id: "uw", label: "Ư", word: "ươm", icon: "🌱" },
+  { id: "v", label: "V", word: "voi", icon: "🐘" },
+  { id: "x", label: "X", word: "xe", icon: "🚲" },
+  { id: "y", label: "Y", word: "y tá", icon: "🧑‍⚕️" },
+];
 
-const LESSONS = {
-  numbers: {
-    title: "Dạy số",
-    subtitle: "Học đếm từ 1 đến 100",
-    description: "Nhấn vào mỗi số để nghe cách phát âm.",
-    icon: "📊",
-    items: Array.from({ length: 100 }, (_, i) => ({
-      id: i + 1,
-      label: `Số ${i + 1}`,
-      vietnamese: VIETNAMESE_NUMBERS[i + 1],
-      content: i + 1,
-      representation: getNumberRepresentation(i + 1),
-    })),
-  },
-  letters: {
-    title: "Dạy chữ",
-    subtitle: "Học bảng chữ cái tiếng Việt",
-    description: "Nhấn vào mỗi chữ để nghe cách phát âm.",
-    icon: "🔤",
-    items: [
-      { id: "a", label: "Chữ A", content: "A", name: "Áo", illustration: "👕" },
-      { id: "a2", label: "Chữ Ă", content: "Ă", name: "Rắn", illustration: "🐍" },
-      { id: "a3", label: "Chữ Â", content: "Â", name: "Ấm", illustration: "🫖" },
-      { id: "b", label: "Chữ B", content: "B", name: "Bóng", illustration: "⚽" },
-      { id: "c", label: "Chữ C", content: "C", name: "Chó", illustration: "🐕" },
-      { id: "d", label: "Chữ D", content: "D", name: "Dưa", illustration: "🍉" },
-      { id: "dd", label: "Chữ Đ", content: "Đ", name: "Đèn", illustration: "💡" },
-      { id: "e", label: "Chữ E", content: "E", name: "Em bé", illustration: "👧" },
-      { id: "e2", label: "Chữ Ê", content: "Ê", name: "Ếch", illustration: "🐸" },
-      { id: "g", label: "Chữ G", content: "G", name: "Gà", illustration: "🐔" },
-      { id: "h", label: "Chữ H", content: "H", name: "Hà mã", illustration: "🦛" },
-      { id: "i", label: "Chữ I", content: "I", name: "Tivi", illustration: "📺" },
-      { id: "k", label: "Chữ K", content: "K", name: "Khoai", illustration: "🥔" },
-      { id: "l", label: "Chữ L", content: "L", name: "Lá", illustration: "🍃" },
-      { id: "m", label: "Chữ M", content: "M", name: "Mẹ", illustration: "👩" },
-      { id: "n", label: "Chữ N", content: "N", name: "Nước", illustration: "💧" },
-      { id: "o", label: "Chữ O", content: "O", name: "Con ong", illustration: "🐝" },
-      { id: "p", label: "Chữ P", content: "P", name: "Phương hướng", illustration: "🧭" },
-      { id: "q", label: "Chữ Q", content: "Q", name: "Quốc", illustration: "👑" },
-      { id: "r", label: "Chữ R", content: "R", name: "Rau", illustration: "🥬" },
-      { id: "s", label: "Chữ S", content: "S", name: "Sao", illustration: "⭐" },
-      { id: "t", label: "Chữ T", content: "T", name: "Tàu", illustration: "🚂" },
-      { id: "u", label: "Chữ U", content: "U", name: "Ưu tiên", illustration: "☂️" },
-      { id: "u2", label: "Chữ Ư", content: "Ư", name: "Lược", illustration: "🪮" },
-      { id: "v", label: "Chữ V", content: "V", name: "Voi", illustration: "🐘" },
-      { id: "x", label: "Chữ X", content: "X", name: "Xoài", illustration: "🥭" },
-      { id: "y", label: "Chữ Y", content: "Y", name: "Yêu thương", illustration: "💕" },
-      { id: "z", label: "Chữ Z", content: "Z", name: "Zigzag", illustration: "⚡" },
-    ],
-  },
-  shapes: {
-    title: "Dạy hình",
-    subtitle: "Nhận dạng hình cơ bản",
-    description: "Nhấn vào mỗi hình để xem ví dụ.",
-    icon: "🎨",
-    items: [
-      { id: "circle", label: "Hình tròn", content: "●", name: "Hình tròn" },
-      { id: "square", label: "Hình vuông", content: "■", name: "Hình vuông" },
-      { id: "triangle", label: "Hình tam giác", content: "▲", name: "Hình tam giác" },
-      { id: "rectangle", label: "Hình chữ nhật", content: "▬", name: "Hình chữ nhật" },
-      { id: "diamond", label: "Hình thoi", content: "◆", name: "Hình thoi" },
-      { id: "star", label: "Hình sao", content: "★", name: "Hình sao" },
-      { id: "heart", label: "Hình trái tim", content: "❤", name: "Hình trái tim" },
-    ],
-  },
-  colors: {
-    title: "Dạy màu",
-    subtitle: "Học các màu sắc",
-    description: "Nhấn vào mỗi màu để nghe cách phát âm.",
-    icon: "🎨",
-    items: [
-      { id: "red", label: "Màu đỏ", content: "🔴", name: "Đỏ", illustration: "🔴" },
-      { id: "orange", label: "Màu cam", content: "🟠", name: "Cam", illustration: "🟠" },
-      { id: "yellow", label: "Màu vàng", content: "🟡", name: "Vàng", illustration: "🟡" },
-      { id: "green", label: "Màu xanh lá", content: "🟢", name: "Xanh lá", illustration: "🟢" },
-      { id: "blue", label: "Màu xanh da trời", content: "🔵", name: "Xanh da trời", illustration: "🔵" },
-      { id: "purple", label: "Màu tím", content: "🟣", name: "Tím", illustration: "🟣" },
-      { id: "pink", label: "Màu hồng", content: "🩷", name: "Hồng", illustration: "🩷" },
-      { id: "brown", label: "Màu nâu", content: "🟤", name: "Nâu", illustration: "🟤" },
-      { id: "white", label: "Màu trắng", content: "⚪", name: "Trắng", illustration: "⚪" },
-    ],
-  },
-};
+const shapes = [
+  { id: "circle", label: "Hình tròn", speech: "hình tròn", text: "Không có góc" },
+  { id: "square", label: "Hình vuông", speech: "hình vuông", text: "Bốn cạnh bằng nhau" },
+  { id: "triangle", label: "Hình tam giác", speech: "hình tam giác", text: "Có ba cạnh" },
+  { id: "rectangle", label: "Hình chữ nhật", speech: "hình chữ nhật", text: "Hai cạnh dài, hai cạnh ngắn" },
+];
+
+function createMathProblem() {
+  const usePlus = Math.random() > 0.45;
+
+  if (usePlus) {
+    const answer = Math.floor(Math.random() * 9) + 2;
+    const left = Math.floor(Math.random() * (answer - 1)) + 1;
+    return { left, right: answer - left, operator: "+", answer };
+  }
+
+  const left = Math.floor(Math.random() * 9) + 2;
+  const right = Math.floor(Math.random() * (left - 1)) + 1;
+  return { left, right, operator: "-", answer: left - right };
+}
 
 function DashboardContent() {
   const router = useRouter();
@@ -144,7 +106,7 @@ function DashboardContent() {
     try {
       await request("/auth/logout", { method: "POST", token });
     } catch {
-      // Ignore logout API errors and clear the local session anyway.
+      // Local logout should still work if the server is temporarily unavailable.
     } finally {
       clearSession();
       router.replace("/login");
@@ -154,53 +116,35 @@ function DashboardContent() {
   if (loading) {
     return (
       <main className="dashboard-shell">
-        <section className="dashboard-card">Đang mở lớp học vui nhộn...</section>
+        <section className="dashboard-card">Đang mở lớp học...</section>
       </main>
     );
   }
 
-  // Show lesson if lesson param is present
-  if (lessonType && LESSONS[lessonType]) {
-    const lesson = LESSONS[lessonType];
+  if (lessonType === "numbers") {
+    return <NumberLesson />;
+  }
+
+  if (lessonType === "letters") {
     return (
-      <main className="dashboard-shell">
-        <section className="dashboard-card">
-          <div className="dashboard-header">
-            <div>
-              <span className="badge">{lesson.title}</span>
-              <h1>{lesson.subtitle}</h1>
-              <p>{lesson.description}</p>
-            </div>
-            <div className="dashboard-actions">
-              <Link href="/dashboard" className="btn secondary">
-                Quay lại
-              </Link>
-            </div>
-          </div>
-
-          <div className="lesson-grid" style={{ marginTop: "28px" }}>
-            {lesson.items.map((item) => (
-              <div
-                key={item.id}
-                className="lesson-card"
-              >
-                {item.illustration && (
-                  <div style={{ fontSize: "80px", marginBottom: "12px" }}>
-                    {item.illustration}
-                  </div>
-                )}
-                <div style={{ fontSize: item.illustration ? "48px" : "120px", fontWeight: "bold", marginBottom: item.illustration ? "8px" : "24px" }}>
-                  {item.content}
-                </div>
-                <h2>{item.name || item.vietnamese}</h2>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
+      <LessonShell title="Dạy chữ" subtitle="Bảng chữ cái tiếng Việt">
+        <LetterLesson />
+      </LessonShell>
     );
   }
 
+  if (lessonType === "shapes") {
+    return (
+      <LessonShell title="Dạy hình" subtitle="Nhận dạng hình cơ bản">
+        <ShapeLesson />
+      </LessonShell>
+    );
+  }
+
+  return <DashboardHome user={user} onLogout={handleLogout} />;
+}
+
+function DashboardHome({ user, onLogout }) {
   return (
     <main className="dashboard-shell">
       <section className="dashboard-card">
@@ -208,50 +152,396 @@ function DashboardContent() {
           <div>
             <span className="badge">Lớp học của bé</span>
             <h1>Xin chào, {user?.name || "bé"}!</h1>
-            <p>Chọn một bài học để bắt đầu khám phá.</p>
+            <p>Chọn một bài học để bắt đầu.</p>
           </div>
           <div className="dashboard-actions">
-            <button className="btn secondary" onClick={handleLogout}>
+            <button className="btn secondary" onClick={onLogout}>
               Đăng xuất
             </button>
           </div>
         </div>
 
-        <div className="lesson-grid" style={{ marginTop: "28px" }}>
-          <Link href="/dashboard?lesson=numbers" className="lesson-card">
-            <div className="lesson-icon">📊</div>
-            <h2>Dạy số</h2>
-            <p>Học đếm từ 1 đến 10 với minh họa trực quan.</p>
-            <div className="lesson-cta">Vào học →</div>
-          </Link>
-
-          <Link href="/dashboard?lesson=letters" className="lesson-card">
-            <div className="lesson-icon">🔤</div>
-            <h2>Dạy chữ</h2>
-            <p>Học 29 chữ cái tiếng Việt với ví dụ dễ hiểu.</p>
-            <div className="lesson-cta">Vào học →</div>
-          </Link>
-
-          <Link href="/dashboard?lesson=shapes" className="lesson-card">
-            <div className="lesson-icon">🎨</div>
-            <h2>Dạy hình</h2>
-            <p>Nhận dạng hình cơ bản qua màu sắc và mô tả.</p>
-            <div className="lesson-cta">Vào học →</div>
-          </Link>
+        <div className="lesson-grid">
+          <LessonLink
+            href="/dashboard?lesson=numbers"
+            icon="🔢"
+            title="Dạy số"
+            text="Nhận biết số và luyện cộng trừ từ 1 đến 10."
+          />
+          <LessonLink
+            href="/dashboard?lesson=letters"
+            icon="🔤"
+            title="Dạy chữ"
+            text="Làm quen 29 chữ cái tiếng Việt."
+          />
+          <LessonLink
+            href="/dashboard?lesson=shapes"
+            icon="◯"
+            title="Dạy hình"
+            text="Nhận biết hình tròn, vuông, tam giác."
+          />
         </div>
       </section>
     </main>
   );
 }
 
-// 2. TẠO COMPONENT MỚI ĐỂ BỌC SUSPENSE (ĐÂY LÀ CHÌA KHÓA FIX LỖI)
+function LessonLink({ href, icon, title, text }) {
+  return (
+    <Link href={href} className="lesson-card">
+      <div className="lesson-icon">{icon}</div>
+      <h2>{title}</h2>
+      <p>{text}</p>
+      <div className="lesson-cta">Vào học →</div>
+    </Link>
+  );
+}
+
+function LessonShell({ title, subtitle, children }) {
+  return (
+    <main className="dashboard-shell">
+      <section className="dashboard-card">
+        <div className="dashboard-header">
+          <div>
+            <span className="badge">{title}</span>
+            <h1>{subtitle}</h1>
+          </div>
+          <div className="dashboard-actions">
+            <Link href="/dashboard" className="btn secondary">
+              Quay lại
+            </Link>
+          </div>
+        </div>
+        {children}
+      </section>
+    </main>
+  );
+}
+
+function NumberLesson() {
+  const [mode, setMode] = useState("learn");
+
+  return (
+    <LessonShell title="Dạy số" subtitle="Số và toán học vui nhộn">
+      <div className="mode-tabs" role="tablist" aria-label="Chế độ học số">
+        <button
+          className={`mode-tab ${mode === "learn" ? "active" : ""}`}
+          onClick={() => setMode("learn")}
+          role="tab"
+          aria-selected={mode === "learn"}
+        >
+          Nhận biết số
+        </button>
+        <button
+          className={`mode-tab ${mode === "math" ? "active" : ""}`}
+          onClick={() => setMode("math")}
+          role="tab"
+          aria-selected={mode === "math"}
+        >
+          Toán học vui
+        </button>
+      </div>
+
+      {mode === "learn" ? <NumberReadingMode /> : <MathGameMode />}
+    </LessonShell>
+  );
+}
+
+function NumberReadingMode() {
+  const [selectedNumber, setSelectedNumber] = useState(1);
+
+  function selectNumber(number) {
+    setSelectedNumber(number);
+    speakVietnamese(`Số ${numberWords[number]}`);
+  }
+
+  return (
+    <section className="activity-panel">
+      <div className="chip-grid number-chip-grid">
+        {numbers.map((number) => (
+          <button
+            key={number}
+            className={`chip ${selectedNumber === number ? "active" : ""}`}
+            onClick={() => selectNumber(number)}
+          >
+            {number}
+          </button>
+        ))}
+      </div>
+
+      <div className="spotlight number-spotlight">
+        <div className="big-number">{selectedNumber}</div>
+        <p>
+          Số <strong>{numberWords[selectedNumber]}</strong>
+        </p>
+        <div className="object-row" aria-label="Đồ vật minh họa">
+          {Array.from({ length: selectedNumber }, (_, index) => (
+            <span key={index}>●</span>
+          ))}
+        </div>
+        <button
+          className="btn primary compact"
+          onClick={() => speakVietnamese(`Số ${numberWords[selectedNumber]}`)}
+        >
+          Nghe phát âm
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function MathGameMode() {
+  const [problem, setProblem] = useState(() => createMathProblem());
+  const [detectedNumber, setDetectedNumber] = useState(null);
+  const [feedback, setFeedback] = useState("Sẵn sàng");
+  const [recognizing, setRecognizing] = useState(false);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
+  useEffect(() => {
+    return () => stopCamera(false);
+  }, []);
+
+  useEffect(() => {
+    if (cameraOn && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [cameraOn]);
+
+  function evaluateAnswer(number) {
+    setDetectedNumber(number);
+    if (number === problem.answer) {
+      setFeedback("Chính xác!");
+      speakVietnamese("Chính xác");
+      return;
+    }
+
+    setFeedback("Thử lại nhé");
+    speakVietnamese("Thử lại nhé");
+  }
+
+  function nextProblem() {
+    setProblem(createMathProblem());
+    setDetectedNumber(null);
+    setFeedback("Sẵn sàng");
+  }
+
+  async function startCamera() {
+    setCameraError("");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Trình duyệt chưa hỗ trợ camera.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setCameraOn(true);
+    } catch {
+      setCameraError("Không mở được camera.");
+    }
+  }
+
+  function stopCamera(updateState = true) {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    if (updateState) {
+      setCameraOn(false);
+    }
+  }
+
+  async function recognizeFrame() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !video.videoWidth) {
+      setCameraError("Camera chưa sẵn sàng.");
+      return;
+    }
+
+    setRecognizing(true);
+    setCameraError("");
+    const context = canvas.getContext("2d");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const image = canvas.toDataURL("image/jpeg", 0.86);
+
+    try {
+      const result = await request("/api/recognize-number", {
+        method: "POST",
+        body: { image },
+      });
+      if (typeof result.number !== "number") {
+        setFeedback("Chưa nhận ra số");
+        return;
+      }
+      evaluateAnswer(result.number);
+    } catch (error) {
+      setCameraError(error.message || "Chưa nhận diện được.");
+    } finally {
+      setRecognizing(false);
+    }
+  }
+
+  return (
+    <section className="math-layout">
+      <div className="problem-panel">
+        <span className="badge">Cộng trừ 1 - 10</span>
+        <div className="math-expression">
+          {problem.left} {problem.operator} {problem.right} = ?
+        </div>
+        <p className={feedback === "Chính xác!" ? "success-text" : ""}>{feedback}</p>
+        {detectedNumber !== null ? (
+          <div className="detected-number">Đáp án nhận diện: {detectedNumber}</div>
+        ) : null}
+
+        <div className="manual-answer-grid">
+          {numbers.map((number) => (
+            <button key={number} className="chip" onClick={() => evaluateAnswer(number)}>
+              {number}
+            </button>
+          ))}
+        </div>
+
+        <button className="btn primary compact" onClick={nextProblem}>
+          Câu mới
+        </button>
+      </div>
+
+      <div className="camera-panel">
+        <div className="camera-frame">
+          {cameraOn ? (
+            <video ref={videoRef} autoPlay playsInline muted />
+          ) : (
+            <div className="camera-placeholder">Camera</div>
+          )}
+          <canvas ref={canvasRef} hidden />
+        </div>
+
+        <div className="camera-actions">
+          {cameraOn ? (
+            <button className="btn secondary" onClick={stopCamera}>
+              Tắt camera
+            </button>
+          ) : (
+            <button className="btn secondary" onClick={startCamera}>
+              Bật camera
+            </button>
+          )}
+          <button
+            className="btn primary"
+            onClick={recognizeFrame}
+            disabled={!cameraOn || recognizing}
+          >
+            {recognizing ? "Đang nhận diện..." : "Chụp đáp án"}
+          </button>
+        </div>
+
+        {cameraError ? <div className="error">{cameraError}</div> : null}
+      </div>
+    </section>
+  );
+}
+
+function LetterLesson() {
+  const [selectedLetter, setSelectedLetter] = useState(letters[0]);
+
+  function selectLetter(item) {
+    setSelectedLetter(item);
+    speakVietnamese(`${item.label} như ${item.word}`);
+  }
+
+  return (
+    <section className="activity-panel">
+      <div className="chip-grid letter-chip-grid">
+        {letters.map((item) => (
+          <button
+            key={item.id}
+            className={`chip ${selectedLetter.id === item.id ? "active" : ""}`}
+            onClick={() => selectLetter(item)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="spotlight">
+        <div className="letter-display">
+          <span>{selectedLetter.label}</span>
+          <strong>{selectedLetter.icon}</strong>
+        </div>
+        <p>
+          {selectedLetter.label} như <strong>{selectedLetter.word}</strong>
+        </p>
+        <button
+          className="btn primary compact"
+          onClick={() => speakVietnamese(`${selectedLetter.label} như ${selectedLetter.word}`)}
+        >
+          Nghe phát âm
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ShapeLesson() {
+  const [selectedShape, setSelectedShape] = useState(shapes[0]);
+
+  function selectShape(shape) {
+    setSelectedShape(shape);
+    speakVietnamese(shape.speech);
+  }
+
+  return (
+    <section className="activity-panel">
+      <div className="chip-grid shape-chip-grid">
+        {shapes.map((shape) => (
+          <button
+            key={shape.id}
+            className={`chip ${selectedShape.id === shape.id ? "active" : ""}`}
+            onClick={() => selectShape(shape)}
+          >
+            {shape.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="spotlight">
+        <div className={`shape-preview ${selectedShape.id}`} />
+        <p>
+          <strong>{selectedShape.label}</strong> - {selectedShape.text}
+        </p>
+        <button
+          className="btn primary compact"
+          onClick={() => speakVietnamese(selectedShape.speech)}
+        >
+          Nghe phát âm
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export default function DashboardPage() {
   return (
-    <Suspense fallback={
-      <main className="dashboard-shell">
-        <section className="dashboard-card">Đang tải dữ liệu...</section>
-      </main>
-    }>
+    <Suspense
+      fallback={
+        <main className="dashboard-shell">
+          <section className="dashboard-card">Đang tải dữ liệu...</section>
+        </main>
+      }
+    >
       <DashboardContent />
     </Suspense>
   );

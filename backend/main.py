@@ -11,7 +11,16 @@ from pydantic import BaseModel
 app = FastAPI(title="KidLearn API")
 
 # ── Đọc cấu hình từ .env ──────────────────────────────
-DB_PATH = os.getenv("KIDLEARN_DATABASE_PATH", "./kidlearn.db")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def default_db_path() -> str:
+    if os.getenv("VERCEL") == "1":
+        return "/tmp/kidlearn.db"
+    return os.path.join(BASE_DIR, "kidlearn.db")
+
+
+DB_PATH = os.getenv("KIDLEARN_DATABASE_PATH") or default_db_path()
 CORS_ORIGINS = os.getenv(
     "KIDLEARN_CORS_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000"
@@ -28,30 +37,46 @@ app.add_middleware(
 
 
 # ── Database helpers ──────────────────────────────────
+def ensure_db_directory():
+    if DB_PATH == ":memory:":
+        return
+
+    db_dir = os.path.dirname(os.path.abspath(DB_PATH))
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
+
+def initialize_schema(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            name          TEXT NOT NULL,
+            email         TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            token   TEXT    PRIMARY KEY,
+            user_id INTEGER NOT NULL
+        )
+    """)
+    conn.commit()
+
+
 def get_db():
+    ensure_db_directory()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    initialize_schema(conn)
     return conn
 
 
 @app.on_event("startup")
 def init_db():
     """Tự động tạo bảng khi server khởi động."""
-    with get_db() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                name          TEXT NOT NULL,
-                email         TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                token   TEXT    PRIMARY KEY,
-                user_id INTEGER NOT NULL
-            )
-        """)
+    with get_db():
+        pass
 
 
 def hash_password(password: str) -> str:

@@ -2,6 +2,12 @@ node_modules/
 .next/
 out/
 build/
+.env
+.env.*
+!.env.example
 .env*.local
 .DS_Store
 backend/venv/
+*.db
+__pycache__/
+*.pyc

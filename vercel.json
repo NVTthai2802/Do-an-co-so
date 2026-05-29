@@ -1,4 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "experimentalServices": {
     "frontend": {
       "entrypoint": "frontend",
@@ -6,8 +7,9 @@
       "framework": "nextjs"
     },
     "backend": {
-      "entrypoint": "backend",
-      "routePrefix": "/_backend"
+      "entrypoint": "backend/main.py",
+      "routePrefix": "/_backend",
+      "framework": "fastapi"
     }
   }
 }

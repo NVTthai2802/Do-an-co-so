@@ -26,3 +26,9 @@ copy .env.example .env.local
 npm run dev
 ```
 
+## Deploy lên Vercel
+
+- Trong Vercel, project cần dùng Services để `experimentalServices` trong `vercel.json` được áp dụng.
+- Không đặt `NEXT_PUBLIC_API_URL=http://localhost:8000` cho Production/Preview. Khi deploy bằng Services, frontend sẽ dùng `NEXT_PUBLIC_BACKEND_URL` do Vercel tự sinh hoặc fallback về `/_backend`.
+- Vercel chỉ cho ghi file trong `/tmp`; SQLite hiện dùng `/tmp/kidlearn.db` khi chạy trên Vercel. Dữ liệu này không bền vững sau cold start/redeploy, nên tài khoản thật nên chuyển sang database bền vững như Postgres/Supabase.
+

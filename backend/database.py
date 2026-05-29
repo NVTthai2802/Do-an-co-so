@@ -1,28 +1,40 @@
+"""
+Shared database connection settings for optional SQLAlchemy scripts.
+
+The running FastAPI app in main.py uses psycopg directly. This module keeps
+legacy imports from failing if a script imports database.py.
+"""
+
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
-# Tự động phát hiện môi trường: Nếu chạy trên Vercel thì bắt buộc lưu vào /tmp
-if os.getenv("VERCEL") == "1":
-    SQLITE_URL = "sqlite:////tmp/kidlearn.db"
-else:
-    SQLITE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'kidlearn.db')}"
-
-engine = create_engine(
-    SQLITE_URL,
-    connect_args={"check_same_thread": False}  # Cần thiết cho SQLite + FastAPI
+DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or os.getenv("POSTGRES_PRISMA_URL")
+    or os.getenv("POSTGRES_URL_NON_POOLING")
+    or "postgresql+psycopg://postgres:postgres@localhost:5432/kidlearn"
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+if DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgresql://"):
+    SQLALCHEMY_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+else:
+    SQLALCHEMY_DATABASE_URL = DATABASE_URL
 
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
 def get_db():
-    """Dependency dùng trong các route FastAPI."""
     db = SessionLocal()
     try:
         yield db

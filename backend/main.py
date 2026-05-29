@@ -1,30 +1,53 @@
 import os
-import sqlite3
 import secrets
-import hashlib
 import socket
+from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
+import psycopg
+from psycopg.rows import dict_row
+from psycopg.errors import OperationalError
 from pydantic import BaseModel
+from dotenv import load_dotenv
+from passlib.context import CryptContext
 
+load_dotenv(Path(__file__).resolve().parent / ".env")
 app = FastAPI(title="KidLearn API")
 
 # ── Đọc cấu hình từ .env ──────────────────────────────
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_LOCAL_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/kidlearn"
 
 
-def default_db_path() -> str:
+def normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
+def get_database_url() -> str:
+    url = (
+        os.getenv("DATABASE_URL")
+        or os.getenv("POSTGRES_URL")
+        or os.getenv("POSTGRES_PRISMA_URL")
+        or os.getenv("POSTGRES_URL_NON_POOLING")
+    )
+    if url:
+        return normalize_database_url(url)
+
     if os.getenv("VERCEL") == "1":
-        return "/tmp/kidlearn.db"
-    return os.path.join(BASE_DIR, "kidlearn.db")
+        raise RuntimeError("Missing DATABASE_URL or POSTGRES_URL environment variable.")
+
+    return DEFAULT_LOCAL_DATABASE_URL
 
 
-DB_PATH = os.getenv("KIDLEARN_DATABASE_PATH") or default_db_path()
+DATABASE_URL = get_database_url()
 CORS_ORIGINS = os.getenv(
     "KIDLEARN_CORS_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000"
 ).split(",")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SCHEMA_READY = False
 
 # ── CORS ─────────────────────────────────────────────
 app.add_middleware(
@@ -37,38 +60,38 @@ app.add_middleware(
 
 
 # ── Database helpers ──────────────────────────────────
-def ensure_db_directory():
-    if DB_PATH == ":memory:":
-        return
-
-    db_dir = os.path.dirname(os.path.abspath(DB_PATH))
-    if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
-
-
 def initialize_schema(conn):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            name          TEXT NOT NULL,
-            email         TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL
+            id BIGSERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
-            token   TEXT    PRIMARY KEY,
-            user_id INTEGER NOT NULL
+            token TEXT PRIMARY KEY,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     """)
     conn.commit()
 
 
-def get_db():
-    ensure_db_directory()
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+def ensure_schema(conn):
+    global SCHEMA_READY
+    if SCHEMA_READY:
+        return
+
     initialize_schema(conn)
+    SCHEMA_READY = True
+
+
+def get_db():
+    conn = psycopg.connect(DATABASE_URL, row_factory=dict_row)
+    ensure_schema(conn)
     return conn
 
 
@@ -80,7 +103,11 @@ def init_db():
 
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    return pwd_context.hash(password)
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    return pwd_context.verify(password, password_hash)
 
 
 # ── Schemas ───────────────────────────────────────────
@@ -98,43 +125,57 @@ class LoginReq(BaseModel):
 # ── Routes ────────────────────────────────────────────
 @app.post("/auth/register")
 def register(req: RegisterReq):
+    email = req.email.strip().lower()
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập họ và tên.")
+
+    if len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="Mật khẩu phải có ít nhất 6 ký tự.")
+
     with get_db() as conn:
         existing = conn.execute(
-            "SELECT id FROM users WHERE email = ?", (req.email,)
+            "SELECT id FROM users WHERE email = %s", (email,)
         ).fetchone()
         if existing:
             raise HTTPException(status_code=400, detail="Email này đã được đăng ký.")
 
         pwd_hash = hash_password(req.password)
-        cur = conn.execute(
-            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-            (req.name, req.email, pwd_hash),
-        )
-        user_id = cur.lastrowid
+        user = conn.execute(
+            """
+            INSERT INTO users (name, email, password_hash)
+            VALUES (%s, %s, %s)
+            RETURNING id, name, email
+            """,
+            (name, email, pwd_hash),
+        ).fetchone()
 
         token = secrets.token_hex(32)
         conn.execute(
-            "INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user_id)
+            "INSERT INTO sessions (token, user_id) VALUES (%s, %s)",
+            (token, user["id"]),
         )
 
         return {
             "access_token": token,
-            "user": {"id": user_id, "name": req.name, "email": req.email},
+            "user": {"id": user["id"], "name": user["name"], "email": user["email"]},
         }
 
 
 @app.post("/auth/login")
 def login(req: LoginReq):
+    email = req.email.strip().lower()
     with get_db() as conn:
         user = conn.execute(
-            "SELECT * FROM users WHERE email = ?", (req.email,)
+            "SELECT * FROM users WHERE email = %s", (email,)
         ).fetchone()
-        if not user or user["password_hash"] != hash_password(req.password):
+        if not user or not verify_password(req.password, user["password_hash"]):
             raise HTTPException(status_code=400, detail="Email hoặc mật khẩu không đúng.")
 
         token = secrets.token_hex(32)
         conn.execute(
-            "INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user["id"])
+            "INSERT INTO sessions (token, user_id) VALUES (%s, %s)",
+            (token, user["id"]),
         )
 
         return {
@@ -151,13 +192,13 @@ def get_me(authorization: Optional[str] = Header(None)):
     token = authorization.split(" ", 1)[1]
     with get_db() as conn:
         session = conn.execute(
-            "SELECT * FROM sessions WHERE token = ?", (token,)
+            "SELECT * FROM sessions WHERE token = %s", (token,)
         ).fetchone()
         if not session:
             raise HTTPException(status_code=401, detail="Phiên đăng nhập không hợp lệ.")
 
         user = conn.execute(
-            "SELECT * FROM users WHERE id = ?", (session["user_id"],)
+            "SELECT * FROM users WHERE id = %s", (session["user_id"],)
         ).fetchone()
         return {"user": {"id": user["id"], "name": user["name"], "email": user["email"]}}
 
@@ -167,13 +208,19 @@ def logout(authorization: Optional[str] = Header(None)):
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ", 1)[1]
         with get_db() as conn:
-            conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+            conn.execute("DELETE FROM sessions WHERE token = %s", (token,))
     return {"message": "Đăng xuất thành công."}
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    try:
+        with get_db() as conn:
+            conn.execute("SELECT 1")
+    except OperationalError as exc:
+        raise HTTPException(status_code=503, detail="Không kết nối được database Postgres.") from exc
+
+    return {"status": "ok", "database": "postgres"}
 
 
 # ── Khởi động server ──────────────────────────────────

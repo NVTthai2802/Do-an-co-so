@@ -3,23 +3,58 @@
 Web học tập cho bé với:
 - Đăng ký / đăng nhập
 - Trang chủ học số, học chữ, nhận dạng hình
-- FastAPI + SQLite cho backend
+- FastAPI + PostgreSQL cho backend
 - Next.js + HTML/CSS/JS cho frontend
+
+## Cài PostgreSQL trên Windows
+
+1. Tải PostgreSQL từ trang chính thức: https://www.postgresql.org/download/windows/
+2. Chạy installer, giữ port mặc định `5432`.
+3. Khi installer hỏi mật khẩu cho user `postgres`, đặt `postgres` nếu muốn dùng đúng cấu hình mặc định trong project. Nếu đặt mật khẩu khác, sửa `DATABASE_URL` trong `backend/.env`.
+4. Sau khi cài xong, mở PowerShell mới và kiểm tra:
+
+```powershell
+psql --version
+```
+
+Nếu PowerShell không nhận `psql`, thêm thư mục `bin` của PostgreSQL vào `PATH`, ví dụ:
+
+```text
+C:\Program Files\PostgreSQL\18\bin
+```
+
+## Tạo database local
+
+```powershell
+createdb -U postgres -h localhost kidlearn
+```
+
+Nếu lệnh trên báo database đã tồn tại thì bỏ qua. Có thể kiểm tra user đã được lưu bằng:
+
+```powershell
+psql -U postgres -h localhost -d kidlearn -c "select id, name, email, created_at from users;"
+```
 
 ## Chạy backend
 
-```bash
+```powershell
 cd backend
-pip install -r requirements.txt
+py -m pip install -r requirements.txt
 copy .env.example .env
-python main.py
+py main.py
 ```
 
-> Nếu cổng 8000 đang bận, backend sẽ tự chuyển sang cổng trống kế tiếp.
+Backend mặc định dùng:
+
+```text
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kidlearn
+```
+
+Nếu bạn đặt mật khẩu PostgreSQL khác, sửa `backend/.env` cho khớp.
 
 ## Chạy frontend
 
-```bash
+```powershell
 cd frontend
 npm install
 copy .env.example .env.local
@@ -28,7 +63,6 @@ npm run dev
 
 ## Deploy lên Vercel
 
-- Trong Vercel, project cần dùng Services để `experimentalServices` trong `vercel.json` được áp dụng.
+- Dùng Postgres từ Vercel Marketplace, Neon, Supabase hoặc provider tương tự.
+- Thêm biến môi trường `DATABASE_URL` hoặc `POSTGRES_URL` trong Vercel Project Settings cho Production/Preview, rồi redeploy.
 - Không đặt `NEXT_PUBLIC_API_URL=http://localhost:8000` cho Production/Preview. Khi deploy bằng Services, frontend sẽ dùng `NEXT_PUBLIC_BACKEND_URL` do Vercel tự sinh hoặc fallback về `/_backend`.
-- Vercel chỉ cho ghi file trong `/tmp`; SQLite hiện dùng `/tmp/kidlearn.db` khi chạy trên Vercel. Dữ liệu này không bền vững sau cold start/redeploy, nên tài khoản thật nên chuyển sang database bền vững như Postgres/Supabase.
-

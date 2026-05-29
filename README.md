@@ -66,3 +66,12 @@ npm run dev
 - Dùng Postgres từ Vercel Marketplace, Neon, Supabase hoặc provider tương tự.
 - Thêm biến môi trường `DATABASE_URL` hoặc `POSTGRES_URL` trong Vercel Project Settings cho Production/Preview, rồi redeploy.
 - Không đặt `NEXT_PUBLIC_API_URL=http://localhost:8000` cho Production/Preview. Khi deploy bằng Services, frontend sẽ dùng `NEXT_PUBLIC_BACKEND_URL` do Vercel tự sinh hoặc fallback về `/_backend`.
+
+### Lỗi Postgres 503 trên Vercel
+
+Nếu form báo `Không kết nối được database Postgres`, kiểm tra trong Vercel Project Settings:
+
+- Không đặt `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kidlearn` cho Production/Preview. `localhost` trên Vercel là server của Vercel, không phải máy tính của bạn.
+- Nên dùng `POSTGRES_URL` từ Vercel Storage/Postgres, hoặc `DATABASE_URL` từ Neon/Supabase/cloud Postgres.
+- URL cloud nên có SSL, ví dụ `?sslmode=require`. Với Neon, không dùng `sslmode=req`.
+- Sau khi sửa Environment Variables, bấm Redeploy để backend nhận cấu hình mới.

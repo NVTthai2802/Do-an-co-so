@@ -11,6 +11,11 @@ from pathlib import Path
 import psycopg
 from dotenv import load_dotenv
 
+try:
+    from db_schema import initialize_schema
+except ImportError:
+    from .db_schema import initialize_schema
+
 
 def normalize_database_url(url: str) -> str:
     if url.startswith("postgres://"):
@@ -27,26 +32,6 @@ def get_database_url() -> str:
         or os.getenv("POSTGRES_URL_NON_POOLING")
         or "postgresql://postgres:postgres@localhost:5432/kidlearn"
     )
-
-
-def initialize_schema(conn):
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id BIGSERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            token TEXT PRIMARY KEY,
-            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-    """)
-    conn.commit()
 
 
 def create_tables():

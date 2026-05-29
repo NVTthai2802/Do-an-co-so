@@ -12,11 +12,20 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from passlib.context import CryptContext
 
+try:
+    from db_schema import initialize_schema
+except ImportError:
+    from .db_schema import initialize_schema
+
 load_dotenv(Path(__file__).resolve().parent / ".env")
 app = FastAPI(title="KidLearn API")
 
 # ── Đọc cấu hình từ .env ──────────────────────────────
 DEFAULT_LOCAL_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/kidlearn"
+
+
+class DatabaseConfigError(RuntimeError):
+    pass
 
 
 def normalize_database_url(url: str) -> str:
@@ -36,12 +45,13 @@ def get_database_url() -> str:
         return normalize_database_url(url)
 
     if os.getenv("VERCEL") == "1":
-        raise RuntimeError("Missing DATABASE_URL or POSTGRES_URL environment variable.")
+        raise DatabaseConfigError(
+            "Thiếu biến môi trường DATABASE_URL hoặc POSTGRES_URL trên Vercel."
+        )
 
     return DEFAULT_LOCAL_DATABASE_URL
 
 
-DATABASE_URL = get_database_url()
 CORS_ORIGINS = os.getenv(
     "KIDLEARN_CORS_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000"
@@ -60,26 +70,6 @@ app.add_middleware(
 
 
 # ── Database helpers ──────────────────────────────────
-def initialize_schema(conn):
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id BIGSERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            token TEXT PRIMARY KEY,
-            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-    """)
-    conn.commit()
-
-
 def ensure_schema(conn):
     global SCHEMA_READY
     if SCHEMA_READY:
@@ -90,15 +80,32 @@ def ensure_schema(conn):
 
 
 def get_db():
-    conn = psycopg.connect(DATABASE_URL, row_factory=dict_row)
-    ensure_schema(conn)
-    return conn
+    try:
+        conn = psycopg.connect(get_database_url(), row_factory=dict_row)
+        ensure_schema(conn)
+        return conn
+    except DatabaseConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except OperationalError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Không kết nối được database Postgres. Kiểm tra DATABASE_URL/POSTGRES_URL.",
+        ) from exc
+    except psycopg.Error as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Database chưa sẵn sàng. Kiểm tra cấu trúc bảng users/sessions.",
+        ) from exc
 
 
 @app.on_event("startup")
 def init_db():
     """Tự động tạo bảng khi server khởi động."""
-    with get_db():
+    try:
+        with get_db():
+            pass
+    except HTTPException:
+        # Let request handlers return the actionable database error as JSON.
         pass
 
 
@@ -108,6 +115,19 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
+
+
+def public_user(user):
+    return {
+        "id": user["id"],
+        "name": (
+            user.get("name")
+            or user.get("full_name")
+            or user.get("username")
+            or user["email"]
+        ),
+        "email": user["email"],
+    }
 
 
 # ── Schemas ───────────────────────────────────────────
@@ -158,7 +178,7 @@ def register(req: RegisterReq):
 
         return {
             "access_token": token,
-            "user": {"id": user["id"], "name": user["name"], "email": user["email"]},
+            "user": public_user(user),
         }
 
 
@@ -169,7 +189,11 @@ def login(req: LoginReq):
         user = conn.execute(
             "SELECT * FROM users WHERE email = %s", (email,)
         ).fetchone()
-        if not user or not verify_password(req.password, user["password_hash"]):
+        password_hash = user.get("password_hash") if user else None
+        if user and not password_hash:
+            password_hash = user.get("hashed_password")
+
+        if not user or not password_hash or not verify_password(req.password, password_hash):
             raise HTTPException(status_code=400, detail="Email hoặc mật khẩu không đúng.")
 
         token = secrets.token_hex(32)
@@ -180,7 +204,7 @@ def login(req: LoginReq):
 
         return {
             "access_token": token,
-            "user": {"id": user["id"], "name": user["name"], "email": user["email"]},
+            "user": public_user(user),
         }
 
 
@@ -200,7 +224,9 @@ def get_me(authorization: Optional[str] = Header(None)):
         user = conn.execute(
             "SELECT * FROM users WHERE id = %s", (session["user_id"],)
         ).fetchone()
-        return {"user": {"id": user["id"], "name": user["name"], "email": user["email"]}}
+        if not user:
+            raise HTTPException(status_code=401, detail="Phiên đăng nhập không hợp lệ.")
+        return {"user": public_user(user)}
 
 
 @app.post("/auth/logout")

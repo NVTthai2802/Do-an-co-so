@@ -66,6 +66,7 @@ npm run dev
 - Dùng Postgres từ Vercel Marketplace, Neon, Supabase hoặc provider tương tự.
 - Thêm biến môi trường `DATABASE_URL` hoặc `POSTGRES_URL` trong Vercel Project Settings cho Production/Preview, rồi redeploy.
 - Không đặt `NEXT_PUBLIC_API_URL=http://localhost:8000` cho Production/Preview. Khi deploy bằng Services, frontend sẽ dùng `NEXT_PUBLIC_BACKEND_URL` do Vercel tự sinh hoặc fallback về `/_backend`.
+- Backend deploy mặc định không cài `requirements-ai.txt` vì `ultralytics` kéo theo `torch`/`opencv` rất lớn và vượt giới hạn Lambda. Phần AI nhận diện số nên chạy local hoặc tách sang dịch vụ riêng có đủ dung lượng.
 
 ### Lỗi Postgres 503 trên Vercel
 

@@ -1,0 +1,18 @@
+# Local dependency and build output. Vercel rebuilds these during deploy.
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Python virtual environments and bytecode.
+backend/venv/
+backend/.venv/
+**/__pycache__/
+**/*.pyc
+
+# Local-only secrets, databases, and AI model weights.
+**/.env
+**/.env.*
+!**/.env.example
+backend/*.db
+backend/models/*.pt

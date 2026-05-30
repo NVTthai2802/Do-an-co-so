@@ -8,6 +8,8 @@ build/
 .env*.local
 .DS_Store
 backend/venv/
+backend/.env/
+backend/.env.*
 *.db
 __pycache__/
 *.pyc

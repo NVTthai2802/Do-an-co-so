@@ -328,7 +328,6 @@ def find_free_port(start: int = 8000) -> int:
         port += 1
     return start
 
-
 if __name__ == "__main__":
     import uvicorn
 

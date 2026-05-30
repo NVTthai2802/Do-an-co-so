@@ -12,13 +12,6 @@ from psycopg.errors import OperationalError
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from passlib.context import CryptContext
-import base64
-import io
-from PIL import Image
-from ultralytics import YOLO
-
-# Initialize the YOLO model
-model = YOLO("models/best.pt")  # You can replace this with your custom model path
 
 try:
     from db_schema import initialize_schema
@@ -334,63 +327,6 @@ def find_free_port(start: int = 8000) -> int:
                 return port
         port += 1
     return start
-
-# --- Thêm đoạn này vào cuối file backend/main.py ---
-
-# 1. Khởi tạo mô hình AI (Load sẵn vào RAM để web phản hồi nhanh)
-try:
-    # Chỉ định đường dẫn tới file best.pt của bạn
-    ai_model = YOLO("best.pt") 
-    print("✅ Đã load mô hình AI thành công!")
-except Exception as e:
-    print(f"⚠️ Lỗi load mô hình: {e}")
-    ai_model = None
-
-class ImageRequest(BaseModel):
-    image: str
-
-@app.post("/recognize-number")
-def recognize_number(req: ImageRequest):
-    if ai_model is None:
-        return {"recognized_number": 0} # Báo lỗi nếu model chưa load được
-
-    try:
-        # Bước 1: Cắt bỏ phần mào đầu của chuỗi Base64 (VD: "data:image/jpeg;base64,")
-        if "," in req.image:
-            base64_data = req.image.split(",")[1]
-        else:
-            base64_data = req.image
-            
-        # Bước 2: Giải mã chuỗi chữ thành file ảnh thật (PIL Image)
-        image_data = base64.b64decode(base64_data)
-        image = Image.open(io.BytesIO(image_data))
-
-        # Bước 3: Đưa ảnh vào mô hình YOLO để "nhìn"
-        # conf=0.5 nghĩa là chỉ lấy kết quả nào máy tính chắc chắn > 50%
-        results = ai_model.predict(source=image, conf=0.5) 
-        
-        # Bước 4: Đọc kết quả AI trả về
-        if len(results[0].boxes) > 0:
-            # Lấy ra vật thể (bàn tay/thẻ số) có độ tin cậy cao nhất
-            best_box = results[0].boxes[0] 
-            class_id = int(best_box.cls[0].item())
-            
-            # Đọc tên nhãn (label) bạn đã gán lúc train model
-            # Giả sử lúc train, class 0 là số 1, class 1 là số 2... 
-            # Hoặc tên class trực tiếp là "1", "2"...
-            class_name = ai_model.names[class_id]
-            
-            # Chuyển tên nhãn thành số nguyên
-            recognized_number = int(class_name)
-            
-            return {"recognized_number": recognized_number}
-        else:
-            # Nếu trong ảnh không có ngón tay hay thẻ số nào
-            return {"recognized_number": 0} 
-            
-    except Exception as e:
-        print(f"Lỗi xử lý ảnh bằng AI: {e}")
-        return {"recognized_number": 0}
 
 if __name__ == "__main__":
     import uvicorn

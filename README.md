@@ -66,7 +66,7 @@ npm run dev
 - Dùng Postgres từ Vercel Marketplace, Neon, Supabase hoặc provider tương tự.
 - Thêm biến môi trường `DATABASE_URL` hoặc `POSTGRES_URL` trong Vercel Project Settings cho Production/Preview, rồi redeploy.
 - Không đặt `NEXT_PUBLIC_API_URL=http://localhost:8000` cho Production/Preview. Khi deploy bằng Services, frontend sẽ dùng `NEXT_PUBLIC_BACKEND_URL` do Vercel tự sinh hoặc fallback về `/_backend`.
-- Backend deploy mặc định không cài `requirements-ai.txt` vì `ultralytics` kéo theo `torch`/`opencv` rất lớn và vượt giới hạn Lambda. Phần AI nhận diện số nên chạy local hoặc tách sang dịch vụ riêng có đủ dung lượng.
+- Backend chạy model `best.onnx` bằng ONNX Runtime, nhẹ hơn so với `ultralytics`/`torch`. File `best.onnx` cần nằm trong `backend/models` khi deploy.
 
 ### Lỗi Postgres 503 trên Vercel
 
@@ -79,16 +79,16 @@ Nếu form báo `Không kết nối được database Postgres`, kiểm tra tron
 
 ## Tính năng AI nhận diện số
 
-Backend có API `POST /api/recognize-number` để nhận ảnh Base64 từ camera và chạy model `best.pt`.
+Backend có API `POST /api/recognize-number` để nhận ảnh Base64 từ camera và chạy model `best.onnx`.
 
 Thiết lập local:
 
 ```powershell
 cd backend
-py -m pip install -r requirements-ai.txt
+py -m pip install -r requirements.txt
 mkdir models
-copy C:\duong-dan\best.pt models\best.pt
+copy C:\duong-dan\best.onnx models\best.onnx
 py main.py
 ```
 
-Nếu chưa có `backend/models/best.pt` hoặc chưa cài `requirements-ai.txt`, app vẫn chạy; phần camera sẽ báo model chưa sẵn sàng.
+Nếu chưa có `backend/models/best.onnx` hoặc chưa cài dependency trong `requirements.txt`, app vẫn chạy; phần camera sẽ báo model chưa sẵn sàng.

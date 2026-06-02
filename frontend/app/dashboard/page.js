@@ -169,13 +169,13 @@ function DashboardHome({ user, onLogout }) {
             text="Nhận biết số và luyện cộng trừ từ 1 đến 10."
           />
           <LessonLink
-            href="/dashboard?lesson=letters"
+            href="/dashboard/letters"
             icon="🔤"
             title="Dạy chữ"
             text="Làm quen 29 chữ cái tiếng Việt."
           />
           <LessonLink
-            href="/dashboard?lesson=shapes"
+            href="/dashboard/shapes"
             icon="◯"
             title="Dạy hình"
             text="Nhận biết hình tròn, vuông, tam giác."

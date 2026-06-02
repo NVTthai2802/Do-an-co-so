@@ -4,9 +4,9 @@ Pydantic schemas dùng cho FastAPI request / response.
 """
 
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
-from models import LessonType, DifficultyLevel
+from .models import LessonType, DifficultyLevel
 
 
 # ─── USER ───────────────────────────────────────

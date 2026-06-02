@@ -9,8 +9,9 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-MODEL_PATH = Path(__file__).resolve().parent / "models" / "best.onnx"
-CLASS_NAMES_PATH = Path(__file__).resolve().parent / "models" / "classes.txt"
+ARTIFACTS_DIR = Path(__file__).resolve().parent / "artifacts"
+MODEL_PATH = ARTIFACTS_DIR / "best.onnx"
+CLASS_NAMES_PATH = ARTIFACTS_DIR / "classes.txt"
 DEFAULT_INPUT_SIZE = 640
 
 
@@ -162,7 +163,7 @@ def get_session_info():
     if not MODEL_PATH.exists():
         raise HTTPException(
             status_code=503,
-            detail="Chua tim thay backend/models/best.onnx.",
+            detail="Chua tim thay backend/app/ml/artifacts/best.onnx.",
         )
 
     try:
@@ -183,7 +184,7 @@ def get_session_info():
             except Exception as exc:
                 raise HTTPException(
                     status_code=503,
-                    detail="Khong load duoc backend/models/best.onnx.",
+                    detail="Khong load duoc backend/app/ml/artifacts/best.onnx.",
                 ) from exc
 
             input_meta = session.get_inputs()[0]
@@ -384,3 +385,19 @@ def recognize_number_from_image(image_data: str):
         "number": number,
         "confidence": round(confidence, 4),
     }
+
+
+def unsupported_model_response(image_data: str, model_name: str):
+    decode_image(image_data)
+    raise HTTPException(
+        status_code=503,
+        detail=f"Chua cau hinh model nhan dang {model_name}.",
+    )
+
+
+def recognize_letter_from_image(image_data: str):
+    return unsupported_model_response(image_data, "chu cai")
+
+
+def recognize_shape_from_image(image_data: str):
+    return unsupported_model_response(image_data, "hinh dang")

@@ -3,7 +3,7 @@
 Put the exported ONNX model here as:
 
 ```text
-backend/models/best.onnx
+backend/app/ml/artifacts/best.onnx
 ```
 
 The original `.pt` file is intentionally ignored by Git because it is usually large and may be trained/private data.

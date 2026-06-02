@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from datetime import datetime, timezone
 
-from models import User, Child, Lesson, Progress, Score, LessonType
-from schemas import UserRegister, ChildCreate, ScoreCreate
+from .models import User, Child, Lesson, Progress, Score, LessonType
+from .schemas import UserRegister, ChildCreate, ScoreCreate
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

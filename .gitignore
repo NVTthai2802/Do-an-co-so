@@ -9,9 +9,8 @@ build/
 .DS_Store
 backend/venv/
 backend/.env/
-backend/models/venv/
 backend/.env.*
 *.db
 __pycache__/
 *.pyc
-backend/models/*.pt
+backend/app/ml/artifacts/*.pt

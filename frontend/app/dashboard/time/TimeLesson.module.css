@@ -1,0 +1,208 @@
+.clockGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.clockButton,
+.exampleClock {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-height: 210px;
+  border: 1px solid rgba(26, 24, 21, 0.08);
+  border-radius: 18px;
+  padding: 16px 12px;
+  background: #fffdf8;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.clockButton:hover,
+.exampleClock:hover {
+  transform: translateY(-3px);
+  border-color: rgba(14, 165, 233, 0.3);
+  box-shadow: 0 10px 26px rgba(57, 75, 89, 0.1);
+}
+
+.clockSvg {
+  width: min(260px, 100%);
+  height: auto;
+  filter: drop-shadow(0 12px 22px rgba(57, 75, 89, 0.12));
+}
+
+.clockSvg.small {
+  width: 132px;
+}
+
+.clockSvg.large {
+  width: min(320px, 100%);
+}
+
+.clockRim {
+  fill: #fff;
+  stroke: #16324f;
+  stroke-width: 6;
+}
+
+.majorTick {
+  stroke: #16324f;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.minorTick {
+  stroke: #8aa1b5;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.clockNumber {
+  fill: #1f2937;
+  font-size: 17px;
+  font-weight: 900;
+  text-anchor: middle;
+  user-select: none;
+}
+
+.hourHand {
+  stroke: #1f2937;
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+
+.minuteHand {
+  stroke: #ef4444;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.clockCenter {
+  fill: #0ea5e9;
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.minuteLesson {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.guidePanel {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border-radius: 18px;
+  background: #f8fbff;
+  border: 1px solid rgba(14, 165, 233, 0.16);
+}
+
+.guidePanel h2 {
+  margin: 0 0 4px;
+}
+
+.guidePanel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.exampleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.guessLayout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(320px, 1.2fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.guessClockPanel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 18px;
+  background: #fffdf8;
+  border: 1px solid rgba(26, 24, 21, 0.08);
+}
+
+.guessClockPanel p {
+  min-height: 28px;
+  margin: 0;
+  color: var(--text);
+  font-weight: 900;
+  text-align: center;
+}
+
+.minuteButtons {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(42px, 1fr));
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #f4f7fb;
+  border: 1px solid rgba(26, 24, 21, 0.06);
+}
+
+.minuteButton {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(26, 24, 21, 0.06);
+}
+
+.minuteButton:hover {
+  box-shadow: inset 0 0 0 2px rgba(14, 165, 233, 0.35);
+}
+
+.minuteButton.correct {
+  background: #22c55e;
+  color: #fff;
+}
+
+.minuteButton.wrong {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  .minuteLesson,
+  .guessLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .minuteButtons {
+    grid-template-columns: repeat(6, minmax(42px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .clockGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clockButton {
+    min-height: 178px;
+    padding: 12px 8px;
+  }
+
+  .clockSvg.small {
+    width: 112px;
+  }
+
+  .minuteButtons {
+    grid-template-columns: repeat(5, minmax(42px, 1fr));
+  }
+}

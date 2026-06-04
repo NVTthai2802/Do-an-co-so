@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import AirDrawActivity from "../../../components/AirDrawActivity";
+import LessonNav from "../../../components/LessonNav";
+import { speakVietnamese } from "../../../lib/speech";
 import styles from "./HocHinh.module.css";
 
 const SHAPES = [
@@ -242,12 +244,20 @@ export default function HocHinh() {
   const [selectedShape, setSelectedShape] = useState(SHAPES[0]);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  const speakShape = (shape) => {
+    speakVietnamese(shape.name.toLowerCase());
+  };
+
   const selectShape = (shape) => {
-    if (shape.id === selectedShape.id) return;
+    if (shape.id === selectedShape.id) {
+      speakShape(shape);
+      return;
+    }
     setIsAnimating(true);
     setTimeout(() => {
       setSelectedShape(shape);
       setIsAnimating(false);
+      speakShape(shape);
     }, 200);
   };
 
@@ -260,6 +270,7 @@ export default function HocHinh() {
             <h1>Học Hình Dạng</h1>
           </div>
           <div className="dashboard-actions">
+            <LessonNav />
             <Link href="/dashboard" className="btn secondary">
               Quay lại
             </Link>
@@ -317,6 +328,9 @@ export default function HocHinh() {
             <div className={styles.svgArea}>{selectedShape.svg}</div>
             <div className={styles.shapeName}>{selectedShape.name}</div>
             <div className={styles.shapeDesc}>{selectedShape.desc}</div>
+            <button className="btn primary compact" onClick={() => speakShape(selectedShape)}>
+              Nghe phát âm
+            </button>
 
             <div className={styles.emojiRow}>
               <span className={styles.shapeEmojiLarge}>{selectedShape.emoji}</span>

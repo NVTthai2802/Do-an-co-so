@@ -6,11 +6,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { clearSession, getToken, saveSession } from "../../lib/auth";
 import { request } from "../../lib/api";
 import { speakVietnamese } from "../../lib/speech";
+import LessonNav from "../../components/LessonNav";
 
-const numbers = Array.from({ length: 10 }, (_, index) => index + 1);
+const digits = Array.from({ length: 10 }, (_, index) => index);
+const roundTens = Array.from({ length: 10 }, (_, index) => (index + 1) * 10);
+const composeTens = roundTens.filter((number) => number < 100);
+const answerChoices10 = Array.from({ length: 11 }, (_, index) => index);
+const answerChoices100 = Array.from({ length: 101 }, (_, index) => index);
 
-const numberWords = [
-  "",
+const digitWords = [
+  "không",
   "một",
   "hai",
   "ba",
@@ -20,8 +25,30 @@ const numberWords = [
   "bảy",
   "tám",
   "chín",
-  "mười",
 ];
+
+function readNumberVietnamese(number) {
+  if (number >= 0 && number < 10) return digitWords[number];
+  if (number === 10) return "mười";
+  if (number < 20) {
+    if (number === 15) return "mười lăm";
+    return `mười ${digitWords[number % 10]}`;
+  }
+  if (number < 100) {
+    const tens = Math.floor(number / 10);
+    const ones = number % 10;
+    if (ones === 0) return `${digitWords[tens]} mươi`;
+    if (ones === 1) return `${digitWords[tens]} mươi mốt`;
+    if (ones === 5) return `${digitWords[tens]} mươi lăm`;
+    return `${digitWords[tens]} mươi ${digitWords[ones]}`;
+  }
+  if (number === 100) return "một trăm";
+  return String(number);
+}
+
+function speakNumber(number) {
+  speakVietnamese(`Số ${readNumberVietnamese(number)}`);
+}
 
 const letters = [
   { id: "a", label: "A", word: "áo", icon: "👕" },
@@ -131,17 +158,22 @@ function countFingersFromResults(results) {
   );
 }
 
-function createMathProblem() {
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function createMathProblem(limit = 10) {
   const usePlus = Math.random() > 0.45;
 
   if (usePlus) {
-    const answer = Math.floor(Math.random() * 9) + 2;
-    const left = Math.floor(Math.random() * (answer - 1)) + 1;
+    const minAnswer = limit === 10 ? 1 : 0;
+    const answer = randomInt(minAnswer, limit);
+    const left = randomInt(0, answer);
     return { left, right: answer - left, operator: "+", answer };
   }
 
-  const left = Math.floor(Math.random() * 9) + 2;
-  const right = Math.floor(Math.random() * (left - 1)) + 1;
+  const left = randomInt(limit === 10 ? 1 : 0, limit);
+  const right = limit === 10 ? randomInt(0, Math.max(0, left - 1)) : randomInt(0, left);
   return { left, right, operator: "-", answer: left - right };
 }
 
@@ -235,7 +267,7 @@ function DashboardHome({ user, onLogout }) {
             href="/dashboard?lesson=numbers"
             icon="🔢"
             title="Dạy số"
-            text="Nhận biết số và luyện cộng trừ từ 1 đến 10."
+            text="Nhận biết số 0-100, ghép số và luyện cộng trừ."
           />
           <LessonLink
             href="/dashboard/letters"
@@ -248,6 +280,12 @@ function DashboardHome({ user, onLogout }) {
             icon="◯"
             title="Dạy hình"
             text="Nhận biết hình tròn, vuông, tam giác."
+          />
+          <LessonLink
+            href="/dashboard/time"
+            icon="⏰"
+            title="Dạy giờ"
+            text="Nhận biết đồng hồ và luyện đoán giờ."
           />
         </div>
       </section>
@@ -276,6 +314,7 @@ function LessonShell({ title, subtitle, children }) {
             <h1>{subtitle}</h1>
           </div>
           <div className="dashboard-actions">
+            <LessonNav />
             <Link href="/dashboard" className="btn secondary">
               Quay lại
             </Link>
@@ -317,50 +356,173 @@ function NumberLesson() {
 }
 
 function NumberReadingMode() {
-  const [selectedNumber, setSelectedNumber] = useState(1);
+  const [subMode, setSubMode] = useState("digits");
+  const [selectedDigit, setSelectedDigit] = useState(0);
+  const [selectedTen, setSelectedTen] = useState(10);
+  const [selectedBase, setSelectedBase] = useState(10);
+  const [selectedUnit, setSelectedUnit] = useState(1);
+  const composedNumber = selectedBase + selectedUnit;
 
-  function selectNumber(number) {
-    setSelectedNumber(number);
-    speakVietnamese(`Số ${numberWords[number]}`);
+  function selectDigit(number) {
+    setSelectedDigit(number);
+    speakNumber(number);
+  }
+
+  function selectTen(number) {
+    setSelectedTen(number);
+    speakNumber(number);
+  }
+
+  function selectBase(number) {
+    setSelectedBase(number);
+    speakNumber(number + selectedUnit);
+  }
+
+  function selectUnit(number) {
+    setSelectedUnit(number);
+    speakNumber(selectedBase + number);
   }
 
   return (
     <section className="activity-panel">
-      <div className="chip-grid number-chip-grid">
-        {numbers.map((number) => (
-          <button
-            key={number}
-            className={`chip ${selectedNumber === number ? "active" : ""}`}
-            onClick={() => selectNumber(number)}
-          >
-            {number}
-          </button>
-        ))}
-      </div>
-
-      <div className="spotlight number-spotlight">
-        <div className="big-number">{selectedNumber}</div>
-        <p>
-          Số <strong>{numberWords[selectedNumber]}</strong>
-        </p>
-        <div className="object-row" aria-label="Đồ vật minh họa">
-          {Array.from({ length: selectedNumber }, (_, index) => (
-            <span key={index}>●</span>
-          ))}
-        </div>
+      <div className="mode-tabs secondary-tabs" role="tablist" aria-label="Phần nhận biết số">
         <button
-          className="btn primary compact"
-          onClick={() => speakVietnamese(`Số ${numberWords[selectedNumber]}`)}
+          className={`mode-tab ${subMode === "digits" ? "active" : ""}`}
+          onClick={() => setSubMode("digits")}
+          role="tab"
+          aria-selected={subMode === "digits"}
         >
-          Nghe phát âm
+          Chữ số 0-9
+        </button>
+        <button
+          className={`mode-tab ${subMode === "tens" ? "active" : ""}`}
+          onClick={() => setSubMode("tens")}
+          role="tab"
+          aria-selected={subMode === "tens"}
+        >
+          Số tròn chục
+        </button>
+        <button
+          className={`mode-tab ${subMode === "compose" ? "active" : ""}`}
+          onClick={() => setSubMode("compose")}
+          role="tab"
+          aria-selected={subMode === "compose"}
+        >
+          Ghép số
         </button>
       </div>
+
+      {subMode === "digits" ? (
+        <>
+          <div className="chip-grid number-chip-grid">
+            {digits.map((number) => (
+              <button
+                key={number}
+                className={`chip ${selectedDigit === number ? "active" : ""}`}
+                onClick={() => selectDigit(number)}
+              >
+                {number}
+              </button>
+            ))}
+          </div>
+          <NumberSpotlight number={selectedDigit} objectCount={selectedDigit} />
+        </>
+      ) : null}
+
+      {subMode === "tens" ? (
+        <>
+          <div className="chip-grid number-chip-grid">
+            {roundTens.map((number) => (
+              <button
+                key={number}
+                className={`chip ${selectedTen === number ? "active" : ""}`}
+                onClick={() => selectTen(number)}
+              >
+                {number}
+              </button>
+            ))}
+          </div>
+          <NumberSpotlight number={selectedTen} objectCount={Math.min(selectedTen / 10, 10)} />
+        </>
+      ) : null}
+
+      {subMode === "compose" ? (
+        <div className="compose-panel">
+          <div className="compose-pickers">
+            <div>
+              <h3>Chọn số tròn chục</h3>
+              <div className="chip-grid compose-chip-grid">
+                {composeTens.map((number) => (
+                  <button
+                    key={number}
+                    className={`chip ${selectedBase === number ? "active" : ""}`}
+                    onClick={() => selectBase(number)}
+                  >
+                    {number}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3>Chọn số đơn vị</h3>
+              <div className="chip-grid compose-chip-grid">
+                {digits.map((number) => (
+                  <button
+                    key={number}
+                    className={`chip ${selectedUnit === number ? "active" : ""}`}
+                    onClick={() => selectUnit(number)}
+                  >
+                    {number}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="spotlight number-spotlight">
+            <div className="compose-result">
+              {selectedBase} + {selectedUnit} = <strong>{composedNumber}</strong>
+            </div>
+            <div className="big-number">{composedNumber}</div>
+            <p>
+              Đọc là <strong>số {readNumberVietnamese(composedNumber)}</strong>
+            </p>
+            <button className="btn primary compact" onClick={() => speakNumber(composedNumber)}>
+              Nghe cách đọc
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
 
+function NumberSpotlight({ number, objectCount }) {
+  const visibleObjects = Math.min(objectCount, 30);
+
+  return (
+    <div className="spotlight number-spotlight">
+      <div className="big-number">{number}</div>
+      <p>
+        Số <strong>{readNumberVietnamese(number)}</strong>
+      </p>
+      <div className="object-row" aria-label="Đồ vật minh họa">
+        {visibleObjects > 0 ? (
+          Array.from({ length: visibleObjects }, (_, index) => <span key={index}>●</span>)
+        ) : (
+          <span className="object-empty">0 đồ vật</span>
+        )}
+      </div>
+      <button className="btn primary compact" onClick={() => speakNumber(number)}>
+        Nghe phát âm
+      </button>
+    </div>
+  );
+}
+
 function MathGameMode() {
-  const [problem, setProblem] = useState(() => createMathProblem());
+  const [rangeLimit, setRangeLimit] = useState(10);
+  const [problem, setProblem] = useState(() => createMathProblem(10));
   const [detectedNumber, setDetectedNumber] = useState(null);
   const [feedback, setFeedback] = useState("Sẵn sàng");
   const [cameraOn, setCameraOn] = useState(false);
@@ -381,6 +543,7 @@ function MathGameMode() {
   const answerLockedRef = useRef(false);
   const problemRef = useRef(problem);
   const wrongAttemptsRef = useRef(0);
+  const answerChoices = rangeLimit === 10 ? answerChoices10 : answerChoices100;
 
   useEffect(() => {
     return () => {
@@ -473,7 +636,7 @@ function MathGameMode() {
   }
 
   function processNumberHandResults(results) {
-    if (answerLockedRef.current) return;
+    if (answerLockedRef.current || rangeLimit !== 10) return;
 
     const totalFingers = countFingersFromResults(results);
     if (!totalFingers) {
@@ -551,7 +714,7 @@ function MathGameMode() {
       clearTimeout(nextProblemTimerRef.current);
       nextProblemTimerRef.current = null;
     }
-    setProblem(createMathProblem());
+    setProblem(createMathProblem(rangeLimit));
     setDetectedNumber(null);
     setFeedback("Sẵn sàng");
     setWrongAttempts(0);
@@ -559,6 +722,26 @@ function MathGameMode() {
     answerLockedRef.current = false;
     resetHeldFinger();
     setHandStatus(cameraOn ? "Giữ nguyên số ngón tay trong 3 giây" : "Bật camera rồi giơ số ngón tay");
+  }
+
+  function switchRange(nextLimit) {
+    if (nextLimit === rangeLimit) return;
+    if (nextProblemTimerRef.current) {
+      clearTimeout(nextProblemTimerRef.current);
+      nextProblemTimerRef.current = null;
+    }
+    if (nextLimit > 10) {
+      stopCamera();
+    }
+    setRangeLimit(nextLimit);
+    setProblem(createMathProblem(nextLimit));
+    setDetectedNumber(null);
+    setFeedback("Sẵn sàng");
+    setWrongAttempts(0);
+    wrongAttemptsRef.current = 0;
+    answerLockedRef.current = false;
+    resetHeldFinger();
+    setHandStatus(nextLimit === 10 ? "Bật camera rồi giơ số ngón tay" : "Chọn đáp án bên dưới");
   }
 
   async function startCamera() {
@@ -604,63 +787,92 @@ function MathGameMode() {
   }
 
   return (
-    <section className="math-layout">
-      <div className="problem-panel">
-        <span className="badge">Cộng trừ 1 - 10</span>
-        <div className="math-expression">
-          {problem.left} {problem.operator} {problem.right} = ?
-        </div>
-        <p className={feedback === "Chính xác!" ? "success-text" : ""}>{feedback}</p>
-        {detectedNumber !== null ? (
-          <div className="detected-number">Số đang nhận: {detectedNumber}</div>
-        ) : null}
-        {wrongAttempts > 0 ? (
-          <div className="detected-number">Số lần sai: {wrongAttempts}/3</div>
-        ) : null}
-
-        <div className="manual-answer-grid">
-          {numbers.map((number) => (
-            <button key={number} className="chip" onClick={() => evaluateAnswer(number)}>
-              {number}
-            </button>
-          ))}
-        </div>
-
-        <button className="btn primary compact" onClick={nextProblem}>
-          Câu mới
+    <section className="activity-panel">
+      <div className="mode-tabs secondary-tabs" role="tablist" aria-label="Phạm vi làm toán">
+        <button
+          className={`mode-tab ${rangeLimit === 10 ? "active" : ""}`}
+          onClick={() => switchRange(10)}
+          role="tab"
+          aria-selected={rangeLimit === 10}
+        >
+          Phạm vi 10
+        </button>
+        <button
+          className={`mode-tab ${rangeLimit === 100 ? "active" : ""}`}
+          onClick={() => switchRange(100)}
+          role="tab"
+          aria-selected={rangeLimit === 100}
+        >
+          Phạm vi 100
         </button>
       </div>
 
-      <div className="camera-panel">
-        <div className="camera-frame">
-          {cameraOn ? (
-            <video ref={videoRef} autoPlay playsInline muted />
-          ) : (
-            <div className="camera-placeholder">Camera</div>
-          )}
-        </div>
-
-        <div className="camera-status">
-          <span>{handStatus}</span>
-          {fingerCount !== null ? <strong>{fingerCount}</strong> : null}
-          <div className="hold-meter" aria-hidden="true">
-            <span style={{ width: `${Math.round(holdProgress * 100)}%` }} />
+      <div className={`math-layout ${rangeLimit === 100 ? "math-layout-wide" : ""}`}>
+        <div className="problem-panel">
+          <span className="badge">Cộng trừ phạm vi {rangeLimit}</span>
+          <div className="math-expression">
+            {problem.left} {problem.operator} {problem.right} = ?
           </div>
+          <p className={feedback.includes("Chính xác") ? "success-text" : ""}>{feedback}</p>
+          {detectedNumber !== null ? (
+            <div className="detected-number">Số đang nhận: {detectedNumber}</div>
+          ) : null}
+          {wrongAttempts > 0 ? (
+            <div className="detected-number">Số lần sai: {wrongAttempts}/3</div>
+          ) : null}
+
+          <div className={`manual-answer-grid ${rangeLimit === 100 ? "wide-answer-grid" : ""}`}>
+            {answerChoices.map((number) => (
+              <button key={number} className="chip" onClick={() => evaluateAnswer(number)}>
+                {number}
+              </button>
+            ))}
+          </div>
+
+          <button className="btn primary compact" onClick={nextProblem}>
+            Câu mới
+          </button>
         </div>
 
-        <div className="camera-actions">
-          {cameraOn ? (
-            <button className="btn secondary" onClick={stopCamera}>
-              Tắt camera
-            </button>
-          ) : (
-            <button className="btn secondary" onClick={startCamera}>
-              Bật camera
-            </button>
-          )}
-        </div>
+        {rangeLimit === 10 ? (
+          <div className="camera-panel">
+            <div className="camera-frame">
+              {cameraOn ? (
+                <video ref={videoRef} autoPlay playsInline muted />
+              ) : (
+                <div className="camera-placeholder">Camera</div>
+              )}
+            </div>
 
-        {cameraError ? <div className="error">{cameraError}</div> : null}
+            <div className="camera-status">
+              <span>{handStatus}</span>
+              {fingerCount !== null ? <strong>{fingerCount}</strong> : null}
+              <div className="hold-meter" aria-hidden="true">
+                <span style={{ width: `${Math.round(holdProgress * 100)}%` }} />
+              </div>
+            </div>
+
+            <div className="camera-actions">
+              {cameraOn ? (
+                <button className="btn secondary" onClick={stopCamera}>
+                  Tắt camera
+                </button>
+              ) : (
+                <button className="btn secondary" onClick={startCamera}>
+                  Bật camera
+                </button>
+              )}
+            </div>
+
+            {cameraError ? <div className="error">{cameraError}</div> : null}
+          </div>
+        ) : (
+          <div className="camera-panel number-note-panel">
+            <span className="badge">Phạm vi 100</span>
+            <p>Với bài toán lớn hơn 10, bé chọn đáp án bằng các nút số ở bên trái.</p>
+            <p>Phần giơ ngón tay vẫn dùng cho bài cộng trừ phạm vi 10.</p>
+          </div>
+        )}
       </div>
     </section>
   );

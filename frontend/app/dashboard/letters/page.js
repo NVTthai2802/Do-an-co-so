@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import AirDrawActivity from "../../../components/AirDrawActivity";
+import LessonNav from "../../../components/LessonNav";
+import { speakVietnamese } from "../../../lib/speech";
 import styles from "./HocChu.module.css";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -61,12 +63,21 @@ export default function HocChu() {
   const [selectedLetter, setSelectedLetter] = useState("A");
   const [isAnimating, setIsAnimating] = useState(false);
 
+  const speakLetter = (letter) => {
+    const item = CHU_DATA[letter];
+    speakVietnamese(`${letter} như ${item.word}`);
+  };
+
   const selectLetter = (letter) => {
-    if (letter === selectedLetter) return;
+    if (letter === selectedLetter) {
+      speakLetter(letter);
+      return;
+    }
     setIsAnimating(true);
     setTimeout(() => {
       setSelectedLetter(letter);
       setIsAnimating(false);
+      speakLetter(letter);
     }, 200);
   };
 
@@ -81,6 +92,7 @@ export default function HocChu() {
             <h1>Học Chữ Cái</h1>
           </div>
           <div className="dashboard-actions">
+            <LessonNav />
             <Link href="/dashboard" className="btn secondary">
               Quay lại
             </Link>
@@ -128,6 +140,9 @@ export default function HocChu() {
             <div className={styles.emoji}>{info.emoji}</div>
             <div className={styles.word}>{info.word}</div>
             <div className={styles.example}>{info.example}</div>
+            <button className="btn primary compact" onClick={() => speakLetter(selectedLetter)}>
+              Nghe phát âm
+            </button>
 
             {/* lowercase */}
             <div className={styles.lowercaseRow}>

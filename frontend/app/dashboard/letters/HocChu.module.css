@@ -143,6 +143,19 @@
   line-height: 1;
 }
 
+.cameraLetterPreview {
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  border-radius: 26px;
+  background: #f7f9ff;
+  color: #5e74f6;
+  font-size: 5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .cameraSection {
   display: grid;
   gap: 18px;

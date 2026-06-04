@@ -5,26 +5,67 @@ import io
 import os
 import re
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import HTTPException
 
 ARTIFACTS_DIR = Path(__file__).resolve().parent / "artifacts"
-MODEL_PATH = ARTIFACTS_DIR / "best.onnx"
-CLASS_NAMES_PATH = ARTIFACTS_DIR / "classes.txt"
 DEFAULT_INPUT_SIZE = 640
 
 
-def get_confidence_threshold() -> float:
+@dataclass(frozen=True)
+class ModelConfig:
+    key: str
+    model_path: Path
+    class_names_path: Path
+    default_input_size: int = DEFAULT_INPUT_SIZE
+    crop_foreground: bool = False
+    invert_light_background: bool = False
+
+
+def artifact_path(env_name: str, fallback_name: str) -> Path:
+    raw_value = os.getenv(env_name)
+    if raw_value:
+        path = Path(raw_value)
+        return path if path.is_absolute() else ARTIFACTS_DIR / path
+    return ARTIFACTS_DIR / fallback_name
+
+
+MODEL_CONFIGS = {
+    "number": ModelConfig(
+        key="number",
+        model_path=artifact_path("KIDLEARN_NUMBER_MODEL", "best.onnx"),
+        class_names_path=artifact_path("KIDLEARN_NUMBER_CLASSES", "classes.txt"),
+    ),
+    "shape": ModelConfig(
+        key="shape",
+        model_path=artifact_path("KIDLEARN_SHAPE_MODEL", "quickdraw.onnx"),
+        class_names_path=artifact_path("KIDLEARN_SHAPE_CLASSES", "quickdraw_classes.txt"),
+        default_input_size=28,
+        crop_foreground=True,
+        invert_light_background=True,
+    ),
+    "letter": ModelConfig(
+        key="letter",
+        model_path=artifact_path("KIDLEARN_LETTER_MODEL", "letter.onnx"),
+        class_names_path=artifact_path("KIDLEARN_LETTER_CLASSES", "letter_classes.txt"),
+        default_input_size=28,
+        crop_foreground=True,
+        invert_light_background=True,
+    ),
+}
+
+
+def get_confidence_threshold(model_key: str) -> float:
+    env_name = f"KIDLEARN_{model_key.upper()}_CONFIDENCE"
     try:
-        return float(os.getenv("KIDLEARN_RECOGNITION_CONFIDENCE", "0.25"))
+        return float(os.getenv(env_name, os.getenv("KIDLEARN_RECOGNITION_CONFIDENCE", "0.25")))
     except ValueError:
         return 0.25
 
 
-CONFIDENCE_THRESHOLD = get_confidence_threshold()
-
-_SESSION_INFO = None
+_SESSION_INFO = {}
 _SESSION_LOCK = threading.Lock()
 
 
@@ -59,28 +100,35 @@ def to_positive_int(value, fallback: int) -> int:
     return number if number > 0 else fallback
 
 
-def is_three_channels(value) -> bool:
+def get_int(value):
     try:
-        return int(value) == 3
+        return int(value)
     except (TypeError, ValueError):
-        return False
+        return None
 
 
-def get_input_spec(input_shape):
+def is_channel_count(value) -> bool:
+    return get_int(value) in (1, 3)
+
+
+def get_input_spec(input_shape, default_input_size: int):
     layout = "nchw"
-    height = DEFAULT_INPUT_SIZE
-    width = DEFAULT_INPUT_SIZE
+    height = default_input_size
+    width = default_input_size
+    channels = 3
 
     if len(input_shape) == 4:
-        if is_three_channels(input_shape[-1]):
+        if is_channel_count(input_shape[-1]):
             layout = "nhwc"
-            height = to_positive_int(input_shape[1], DEFAULT_INPUT_SIZE)
-            width = to_positive_int(input_shape[2], DEFAULT_INPUT_SIZE)
+            channels = get_int(input_shape[-1]) or channels
+            height = to_positive_int(input_shape[1], default_input_size)
+            width = to_positive_int(input_shape[2], default_input_size)
         else:
-            height = to_positive_int(input_shape[2], DEFAULT_INPUT_SIZE)
-            width = to_positive_int(input_shape[3], DEFAULT_INPUT_SIZE)
+            channels = get_int(input_shape[1]) or channels
+            height = to_positive_int(input_shape[2], default_input_size)
+            width = to_positive_int(input_shape[3], default_input_size)
 
-    return layout, width, height
+    return layout, width, height, channels
 
 
 def normalize_class_names(value):
@@ -119,12 +167,12 @@ def parse_class_names(value: str):
     return {}
 
 
-def load_class_names_file():
-    if not CLASS_NAMES_PATH.exists():
+def load_class_names_file(path: Path):
+    if not path.exists():
         return {}
 
     names = {}
-    for fallback_index, line in enumerate(CLASS_NAMES_PATH.read_text(encoding="utf-8").splitlines()):
+    for fallback_index, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
@@ -141,8 +189,8 @@ def load_class_names_file():
     return names
 
 
-def load_class_names(session):
-    file_names = load_class_names_file()
+def load_class_names(session, path: Path):
+    file_names = load_class_names_file(path)
     if file_names:
         return file_names
 
@@ -155,15 +203,18 @@ def load_class_names(session):
     return {}
 
 
-def get_session_info():
-    global _SESSION_INFO
-    if _SESSION_INFO is not None:
-        return _SESSION_INFO
+def get_session_info(model_key: str):
+    if model_key not in MODEL_CONFIGS:
+        raise HTTPException(status_code=404, detail="Model khong duoc ho tro.")
 
-    if not MODEL_PATH.exists():
+    config = MODEL_CONFIGS[model_key]
+    if model_key in _SESSION_INFO:
+        return _SESSION_INFO[model_key]
+
+    if not config.model_path.exists():
         raise HTTPException(
             status_code=503,
-            detail="Chua tim thay backend/app/ml/artifacts/best.onnx.",
+            detail=f"Chua tim thay {config.model_path.name}.",
         )
 
     try:
@@ -175,33 +226,38 @@ def get_session_info():
         ) from exc
 
     with _SESSION_LOCK:
-        if _SESSION_INFO is None:
+        if model_key not in _SESSION_INFO:
             try:
                 session = ort.InferenceSession(
-                    str(MODEL_PATH),
+                    str(config.model_path),
                     providers=["CPUExecutionProvider"],
                 )
             except Exception as exc:
                 raise HTTPException(
                     status_code=503,
-                    detail="Khong load duoc backend/app/ml/artifacts/best.onnx.",
+                    detail=f"Khong load duoc {config.model_path.name}.",
                 ) from exc
 
             input_meta = session.get_inputs()[0]
-            layout, width, height = get_input_spec(input_meta.shape)
-            _SESSION_INFO = {
+            layout, width, height, channels = get_input_spec(
+                input_meta.shape,
+                config.default_input_size,
+            )
+            _SESSION_INFO[model_key] = {
+                "config": config,
                 "session": session,
                 "input_name": input_meta.name,
                 "layout": layout,
                 "width": width,
                 "height": height,
-                "class_names": load_class_names(session),
+                "channels": channels,
+                "class_names": load_class_names(session, config.class_names_path),
             }
 
-    return _SESSION_INFO
+    return _SESSION_INFO[model_key]
 
 
-def resize_with_padding(image, width: int, height: int):
+def resize_with_padding(image, width: int, height: int, fill):
     from PIL import Image
 
     scale = min(width / image.width, height / image.height)
@@ -209,11 +265,38 @@ def resize_with_padding(image, width: int, height: int):
     resized_height = max(1, int(round(image.height * scale)))
     resized = image.resize((resized_width, resized_height))
 
-    canvas = Image.new("RGB", (width, height), (114, 114, 114))
+    canvas = Image.new(image.mode, (width, height), fill)
     paste_x = (width - resized_width) // 2
     paste_y = (height - resized_height) // 2
     canvas.paste(resized, (paste_x, paste_y))
     return canvas
+
+
+def crop_foreground(image, np):
+    array = np.asarray(image)
+    if array.size == 0:
+        return image
+
+    background_is_light = float(array.mean()) > 127.0
+    mask = array < 245 if background_is_light else array > 10
+    if not mask.any():
+        return image
+
+    y_indices, x_indices = np.where(mask)
+    x_min = int(x_indices.min())
+    x_max = int(x_indices.max())
+    y_min = int(y_indices.min())
+    y_max = int(y_indices.max())
+    padding = max(4, int(max(x_max - x_min, y_max - y_min) * 0.18))
+
+    return image.crop(
+        (
+            max(0, x_min - padding),
+            max(0, y_min - padding),
+            min(image.width, x_max + padding + 1),
+            min(image.height, y_max + padding + 1),
+        )
+    )
 
 
 def preprocess_image(image, session_info):
@@ -225,11 +308,33 @@ def preprocess_image(image, session_info):
             detail="Backend chua cai numpy. Chay: pip install -r backend/requirements.txt",
         ) from exc
 
-    resized = resize_with_padding(image, session_info["width"], session_info["height"])
-    input_array = np.asarray(resized, dtype=np.float32) / 255.0
+    config = session_info["config"]
+    if session_info["channels"] == 1:
+        from PIL import ImageOps
 
-    if session_info["layout"] == "nchw":
-        input_array = np.transpose(input_array, (2, 0, 1))
+        working_image = ImageOps.grayscale(image)
+        if config.invert_light_background and float(np.asarray(working_image).mean()) > 127.0:
+            working_image = ImageOps.invert(working_image)
+        if config.crop_foreground:
+            working_image = crop_foreground(working_image, np)
+        resized = resize_with_padding(working_image, session_info["width"], session_info["height"], 0)
+        input_array = np.asarray(resized, dtype=np.float32) / 255.0
+
+        if session_info["layout"] == "nchw":
+            input_array = np.expand_dims(input_array, axis=0)
+        else:
+            input_array = np.expand_dims(input_array, axis=-1)
+    else:
+        resized = resize_with_padding(
+            image.convert("RGB"),
+            session_info["width"],
+            session_info["height"],
+            (114, 114, 114),
+        )
+        input_array = np.asarray(resized, dtype=np.float32) / 255.0
+
+        if session_info["layout"] == "nchw":
+            input_array = np.transpose(input_array, (2, 0, 1))
 
     return np.expand_dims(input_array, axis=0).astype(np.float32)
 
@@ -270,6 +375,12 @@ def extract_number(label: str):
         "ten": 10,
     }
     return words.get(normalized)
+
+
+def extract_letter(label: str):
+    normalized = label.upper().strip()
+    match = re.search(r"[A-Z]", normalized)
+    return match.group(0) if match else None
 
 
 def normalize_classification_scores(scores, np):
@@ -362,29 +473,44 @@ def parse_outputs(outputs, names):
     return best_prediction
 
 
-def empty_prediction():
-    return {"label": None, "number": None, "confidence": 0.0}
+def empty_prediction(model_key: str):
+    result = {"label": None, "confidence": 0.0}
+    if model_key == "number":
+        result["number"] = None
+    if model_key == "letter":
+        result["letter"] = None
+    return result
 
 
-def recognize_number_from_image(image_data: str):
+def recognize_from_image(model_key: str, image_data: str):
     image = decode_image(image_data)
-    session_info = get_session_info()
+    session_info = get_session_info(model_key)
     input_tensor = preprocess_image(image, session_info)
     outputs = session_info["session"].run(None, {session_info["input_name"]: input_tensor})
     prediction = parse_outputs(outputs, session_info["class_names"])
 
     if prediction is None:
-        return empty_prediction()
+        return empty_prediction(model_key)
 
     label, number, confidence = prediction
-    if confidence < CONFIDENCE_THRESHOLD:
-        return empty_prediction()
+    if confidence < get_confidence_threshold(model_key):
+        return empty_prediction(model_key)
 
-    return {
+    result = {
         "label": label,
-        "number": number,
         "confidence": round(confidence, 4),
     }
+
+    if model_key == "number":
+        result["number"] = number
+    if model_key == "letter":
+        result["letter"] = extract_letter(label)
+
+    return result
+
+
+def recognize_number_from_image(image_data: str):
+    return recognize_from_image("number", image_data)
 
 
 def unsupported_model_response(image_data: str, model_name: str):
@@ -396,8 +522,8 @@ def unsupported_model_response(image_data: str, model_name: str):
 
 
 def recognize_letter_from_image(image_data: str):
-    return unsupported_model_response(image_data, "chu cai")
+    return recognize_from_image("letter", image_data)
 
 
 def recognize_shape_from_image(image_data: str):
-    return unsupported_model_response(image_data, "hinh dang")
+    return recognize_from_image("shape", image_data)

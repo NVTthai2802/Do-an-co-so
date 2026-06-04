@@ -619,6 +619,45 @@ input {
   gap: 12px;
 }
 
+.camera-status {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #eef9f2;
+  color: #2d6b4f;
+  font-weight: 900;
+}
+
+.camera-status strong {
+  min-width: 38px;
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #fff;
+  color: #1d4ed8;
+  font-size: 1.35rem;
+}
+
+.hold-meter {
+  grid-column: 1 / -1;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(45, 107, 79, 0.12);
+}
+
+.hold-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #57c7a3, #2563eb);
+  transition: width 0.18s ease;
+}
+
 @media (max-width: 900px) {
   .hero,
   .feature-grid,

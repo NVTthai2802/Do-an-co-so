@@ -16,17 +16,40 @@ function isLocalDevelopmentUrl(value) {
   }
 }
 
-const envApiUrl = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
-const serviceApiUrl = normalizeApiUrl(process.env.NEXT_PUBLIC_BACKEND_URL);
-const productionServiceApiUrl =
-  serviceApiUrl && !isLocalDevelopmentUrl(serviceApiUrl) ? serviceApiUrl : "";
+function isBrowserOnLocalhost() {
+  if (typeof window === "undefined") {
+    return false;
+  }
 
-export const API_URL =
-  process.env.NODE_ENV === "production"
-    ? envApiUrl && !isLocalDevelopmentUrl(envApiUrl)
-      ? envApiUrl
-      : productionServiceApiUrl || "/_backend"
-    : envApiUrl || serviceApiUrl || "http://localhost:8000";
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
+function normalizeServiceApiUrl(value) {
+  const normalized = normalizeApiUrl(value);
+  return normalized === "/backend" ? "/_backend" : normalized;
+}
+
+const envApiUrl = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
+const serviceApiUrl = normalizeServiceApiUrl(process.env.NEXT_PUBLIC_BACKEND_URL);
+
+export function getApiUrl() {
+  if (process.env.NODE_ENV !== "production") {
+    return envApiUrl || serviceApiUrl || "http://localhost:8000";
+  }
+
+  const browserIsLocal = isBrowserOnLocalhost();
+  if (envApiUrl && (browserIsLocal || !isLocalDevelopmentUrl(envApiUrl))) {
+    return envApiUrl;
+  }
+
+  if (serviceApiUrl && (browserIsLocal || !isLocalDevelopmentUrl(serviceApiUrl))) {
+    return serviceApiUrl;
+  }
+
+  return "/_backend";
+}
+
+export const API_URL = getApiUrl();
 
 export async function request(path, { method = "GET", body, token } = {}) {
   const headers = {
@@ -37,7 +60,7 @@ export async function request(path, { method = "GET", body, token } = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${getApiUrl()}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,

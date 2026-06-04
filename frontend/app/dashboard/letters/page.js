@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
-import { request } from "../../../lib/api";
+import { useState } from "react";
+import AirDrawActivity from "../../../components/AirDrawActivity";
 import styles from "./HocChu.module.css";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -36,19 +36,30 @@ const CHU_DATA = {
   Z: { emoji: "⚡", word: "Zip", example: "Z như Zip nhanh" },
 };
 
+function drawLetterTemplate(letter) {
+  return (ctx, width, height) => {
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `900 ${Math.round(height * 0.78)}px Arial, sans-serif`;
+    ctx.fillText(letter, width / 2, height / 2 + height * 0.04);
+  };
+}
+
+const CAMERA_LETTERS = ALPHABET.map((letter) => ({
+  id: letter,
+  label: letter,
+  speech: `chữ ${letter}`,
+  color: "#5e74f6",
+  preview: <span className={styles.cameraLetterPreview}>{letter}</span>,
+  aliases: [letter, `letter ${letter}`, `chu ${letter}`, `chữ ${letter}`],
+  drawTemplate: drawLetterTemplate(letter),
+}));
+
 export default function HocChu() {
   const [activeTab, setActiveTab] = useState("hoc"); // "hoc" | "camera"
   const [selectedLetter, setSelectedLetter] = useState("A");
   const [isAnimating, setIsAnimating] = useState(false);
-
-  // Camera states
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [cameraOn, setCameraOn] = useState(false);
-  const [capturedImage, setCapturedImage] = useState(null);
-  const [prediction, setPrediction] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const streamRef = useRef(null);
 
   const selectLetter = (letter) => {
     if (letter === selectedLetter) return;
@@ -58,72 +69,6 @@ export default function HocChu() {
       setIsAnimating(false);
     }, 200);
   };
-
-  // Camera
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setCameraOn(true);
-      setCapturedImage(null);
-      setPrediction(null);
-    } catch (err) {
-      alert("Không thể mở camera: " + err.message);
-    }
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    setCameraOn(false);
-  };
-
-  const capturePhoto = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    const imageData = canvas.toDataURL("image/jpeg");
-    setCapturedImage(imageData);
-    stopCamera();
-    sendToBackend(imageData);
-  };
-
-  const sendToBackend = async (imageData) => {
-    setIsLoading(true);
-    setPrediction(null);
-    try {
-      const data = await request("/api/recognize-letter", {
-        method: "POST",
-        body: { image: imageData },
-      });
-      setPrediction(data);
-    } catch (err) {
-      setPrediction({ error: "Lỗi kết nối máy chủ" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const retake = () => {
-    setCapturedImage(null);
-    setPrediction(null);
-    startCamera();
-  };
-
-  // Cleanup camera on tab switch
-  useEffect(() => {
-    if (activeTab !== "camera") stopCamera();
-  }, [activeTab]);
-
-  useEffect(() => () => stopCamera(), []);
 
   const info = CHU_DATA[selectedLetter];
 
@@ -197,95 +142,11 @@ export default function HocChu() {
 
       {/* ===== TAB CAMERA ===== */}
       {activeTab === "camera" && (
-        <div className={styles.cameraSection}>
-          <p className={styles.cameraHint}>
-            Dùng camera để nhận dạng chữ cái bé viết ✏️
-          </p>
-
-          <div className={styles.cameraBox}>
-            {/* Video feed */}
-            {cameraOn && !capturedImage && (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className={styles.video}
-              />
-            )}
-
-            {/* Captured image */}
-            {capturedImage && (
-              <img
-                src={capturedImage}
-                alt="Ảnh đã chụp"
-                className={styles.capturedImg}
-              />
-            )}
-
-            {/* Placeholder */}
-            {!cameraOn && !capturedImage && (
-              <div className={styles.cameraPlaceholder}>
-                <span className={styles.cameraIcon}>📷</span>
-                <p>Nhấn "Bật Camera" để bắt đầu</p>
-              </div>
-            )}
-
-            <canvas ref={canvasRef} className={styles.hiddenCanvas} />
-          </div>
-
-          {/* Buttons */}
-          <div className={styles.btnRow}>
-            {!cameraOn && !capturedImage && (
-              <button className={styles.btnPrimary} onClick={startCamera}>
-                🎥 Bật Camera
-              </button>
-            )}
-            {cameraOn && (
-              <>
-                <button className={styles.btnPrimary} onClick={capturePhoto}>
-                  📸 Chụp Ảnh
-                </button>
-                <button className={styles.btnSecondary} onClick={stopCamera}>
-                  ✕ Tắt Camera
-                </button>
-              </>
-            )}
-            {capturedImage && (
-              <button className={styles.btnSecondary} onClick={retake}>
-                🔄 Chụp Lại
-              </button>
-            )}
-          </div>
-
-          {/* Result */}
-          {isLoading && (
-            <div className={styles.resultBox}>
-              <div className={styles.spinner} /> Đang nhận dạng...
-            </div>
-          )}
-          {prediction && !isLoading && (
-            <div className={styles.resultBox}>
-              {prediction.error ? (
-                <p className={styles.error}>❌ {prediction.error}</p>
-              ) : (
-                <>
-                  <p className={styles.resultLabel}>Kết quả nhận dạng:</p>
-                  <div className={styles.resultLetter}>
-                    {prediction.label || prediction.result || "?"}
-                  </div>
-                  {prediction.confidence !== undefined && (
-                    <p className={styles.confidence}>
-                      Độ chính xác:{" "}
-                      <strong>
-                        {(prediction.confidence * 100).toFixed(1)}%
-                      </strong>
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        <AirDrawActivity
+          activityLabel="chữ"
+          endpoint="/api/recognize-letter"
+          items={CAMERA_LETTERS}
+        />
       )}
         </div>
       </section>

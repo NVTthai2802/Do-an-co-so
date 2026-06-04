@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
-import { request } from "../../../lib/api";
+import { useState } from "react";
+import AirDrawActivity from "../../../components/AirDrawActivity";
 import styles from "./HocHinh.module.css";
 
 const SHAPES = [
@@ -51,6 +51,18 @@ const SHAPES = [
     svg: (
       <svg viewBox="0 0 100 100" width="120" height="120">
         <rect x="8" y="26" width="84" height="48" fill="none" stroke="#10b981" strokeWidth="6" />
+      </svg>
+    ),
+  },
+  {
+    id: "duong_thang",
+    name: "Đường Thẳng",
+    emoji: "━",
+    color: "#0ea5e9",
+    desc: "Một nét đi thẳng từ điểm này đến điểm kia. Như thước kẻ, con đường!",
+    svg: (
+      <svg viewBox="0 0 100 100" width="120" height="120">
+        <line x1="14" y1="50" x2="86" y2="50" stroke="#0ea5e9" strokeWidth="8" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -119,19 +131,116 @@ const SHAPES = [
   },
 ];
 
+function setupTemplateStroke(ctx, width) {
+  ctx.strokeStyle = "#fff";
+  ctx.fillStyle = "#fff";
+  ctx.lineWidth = Math.max(8, width * 0.08);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+}
+
+function drawStarPath(ctx, width, height) {
+  const cx = width / 2;
+  const cy = height / 2;
+  const outer = Math.min(width, height) * 0.34;
+  const inner = outer * 0.45;
+  ctx.beginPath();
+  for (let index = 0; index < 10; index += 1) {
+    const radius = index % 2 === 0 ? outer : inner;
+    const angle = -Math.PI / 2 + (index * Math.PI) / 5;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawShapeTemplate(id) {
+  return (ctx, width, height) => {
+    setupTemplateStroke(ctx, width);
+    const cx = width / 2;
+    const cy = height / 2;
+    const size = Math.min(width, height);
+
+    if (id === "tron") {
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.32, 0, Math.PI * 2);
+      ctx.stroke();
+      return;
+    }
+
+    if (id === "vuong") {
+      const side = size * 0.56;
+      ctx.strokeRect(cx - side / 2, cy - side / 2, side, side);
+      return;
+    }
+
+    if (id === "tamgiac") {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - size * 0.34);
+      ctx.lineTo(cx + size * 0.36, cy + size * 0.32);
+      ctx.lineTo(cx - size * 0.36, cy + size * 0.32);
+      ctx.closePath();
+      ctx.stroke();
+      return;
+    }
+
+    if (id === "sao") {
+      drawStarPath(ctx, width, height);
+      return;
+    }
+
+    if (id === "duong_thang") {
+      ctx.beginPath();
+      ctx.moveTo(width * 0.18, cy);
+      ctx.lineTo(width * 0.82, cy);
+      ctx.stroke();
+      return;
+    }
+
+    if (id === "luc") {
+      ctx.beginPath();
+      for (let index = 0; index < 6; index += 1) {
+        const angle = -Math.PI / 2 + (index * Math.PI) / 3;
+        const x = cx + Math.cos(angle) * size * 0.36;
+        const y = cy + Math.sin(angle) * size * 0.36;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  };
+}
+
+const CAMERA_SHAPE_IDS = ["tron", "vuong", "tamgiac", "sao", "duong_thang", "luc"];
+
+const CAMERA_SHAPES = SHAPES.filter((shape) => CAMERA_SHAPE_IDS.includes(shape.id)).map((shape) => ({
+  id: shape.id,
+  label: shape.name,
+  speech: shape.name.toLowerCase(),
+  color: shape.color,
+  preview: shape.svg,
+  aliases: [
+    shape.name,
+    shape.name.replace("Hình ", ""),
+    shape.id,
+    shape.id === "tron" ? "hinh tron circle" : "",
+    shape.id === "vuong" ? "hinh vuong square" : "",
+    shape.id === "tamgiac" ? "hinh tam giac triangle" : "",
+    shape.id === "sao" ? "ngoi sao star" : "",
+    shape.id === "duong_thang" ? "duong thang line" : "",
+    shape.id === "luc" ? "luc giac hexagon" : "",
+  ],
+  drawTemplate: drawShapeTemplate(shape.id),
+}));
+
 export default function HocHinh() {
   const [activeTab, setActiveTab] = useState("hoc");
   const [selectedShape, setSelectedShape] = useState(SHAPES[0]);
   const [isAnimating, setIsAnimating] = useState(false);
-
-  // Camera
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [cameraOn, setCameraOn] = useState(false);
-  const [capturedImage, setCapturedImage] = useState(null);
-  const [prediction, setPrediction] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const streamRef = useRef(null);
 
   const selectShape = (shape) => {
     if (shape.id === selectedShape.id) return;
@@ -141,68 +250,6 @@ export default function HocHinh() {
       setIsAnimating(false);
     }, 200);
   };
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
-      setCameraOn(true);
-      setCapturedImage(null);
-      setPrediction(null);
-    } catch (err) {
-      alert("Không thể mở camera: " + err.message);
-    }
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    setCameraOn(false);
-  };
-
-  const capturePhoto = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    const imageData = canvas.toDataURL("image/jpeg");
-    setCapturedImage(imageData);
-    stopCamera();
-    sendToBackend(imageData);
-  };
-
-  const sendToBackend = async (imageData) => {
-    setIsLoading(true);
-    setPrediction(null);
-    try {
-      const data = await request("/api/recognize-shape", {
-        method: "POST",
-        body: { image: imageData },
-      });
-      setPrediction(data);
-    } catch (err) {
-      setPrediction({ error: "Lỗi kết nối máy chủ" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const retake = () => {
-    setCapturedImage(null);
-    setPrediction(null);
-    startCamera();
-  };
-
-  useEffect(() => {
-    if (activeTab !== "camera") stopCamera();
-  }, [activeTab]);
-
-  useEffect(() => () => stopCamera(), []);
 
   return (
     <main className="dashboard-shell">
@@ -280,77 +327,11 @@ export default function HocHinh() {
 
       {/* ===== TAB CAMERA ===== */}
       {activeTab === "camera" && (
-        <div className={styles.cameraSection}>
-          <p className={styles.cameraHint}>
-            Vẽ một hình lên giấy rồi chụp ảnh để nhận dạng! 🎨
-          </p>
-
-          <div className={styles.cameraBox}>
-            {cameraOn && !capturedImage && (
-              <video ref={videoRef} autoPlay playsInline className={styles.video} />
-            )}
-            {capturedImage && (
-              <img src={capturedImage} alt="Ảnh đã chụp" className={styles.capturedImg} />
-            )}
-            {!cameraOn && !capturedImage && (
-              <div className={styles.cameraPlaceholder}>
-                <span className={styles.cameraIcon}>📷</span>
-                <p>Nhấn "Bật Camera" để bắt đầu</p>
-              </div>
-            )}
-            <canvas ref={canvasRef} className={styles.hiddenCanvas} />
-          </div>
-
-          <div className={styles.btnRow}>
-            {!cameraOn && !capturedImage && (
-              <button className={styles.btnPrimary} onClick={startCamera}>
-                🎥 Bật Camera
-              </button>
-            )}
-            {cameraOn && (
-              <>
-                <button className={styles.btnPrimary} onClick={capturePhoto}>
-                  📸 Chụp Ảnh
-                </button>
-                <button className={styles.btnSecondary} onClick={stopCamera}>
-                  ✕ Tắt Camera
-                </button>
-              </>
-            )}
-            {capturedImage && (
-              <button className={styles.btnSecondary} onClick={retake}>
-                🔄 Chụp Lại
-              </button>
-            )}
-          </div>
-
-          {isLoading && (
-            <div className={styles.resultBox}>
-              <div className={styles.spinner} /> Đang nhận dạng...
-            </div>
-          )}
-
-          {prediction && !isLoading && (
-            <div className={styles.resultBox}>
-              {prediction.error ? (
-                <p className={styles.error}>❌ {prediction.error}</p>
-              ) : (
-                <>
-                  <p className={styles.resultLabel}>Kết quả nhận dạng:</p>
-                  <div className={styles.resultShape}>
-                    {prediction.label || prediction.result || "?"}
-                  </div>
-                  {prediction.confidence !== undefined && (
-                    <p className={styles.confidence}>
-                      Độ chính xác:{" "}
-                      <strong>{(prediction.confidence * 100).toFixed(1)}%</strong>
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        <AirDrawActivity
+          activityLabel="hình"
+          endpoint="/api/recognize-shape"
+          items={CAMERA_SHAPES}
+        />
       )}
         </div>
       </section>

@@ -62,6 +62,75 @@ const shapes = [
   { id: "rectangle", label: "Hình chữ nhật", speech: "hình chữ nhật", text: "Hai cạnh dài, hai cạnh ngắn" },
 ];
 
+const MEDIAPIPE_HANDS_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
+const MEDIAPIPE_BASE_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/hands";
+const scriptPromises = new Map();
+
+function loadScript(src) {
+  if (typeof window === "undefined") return Promise.reject(new Error("No browser"));
+  if (scriptPromises.has(src)) return scriptPromises.get(src);
+
+  const promise = new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      if (existing.dataset.loaded === "true") resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve();
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  scriptPromises.set(src, promise);
+  return promise;
+}
+
+async function loadMediaPipeHands() {
+  if (window.Hands) return true;
+  await loadScript(MEDIAPIPE_HANDS_URL);
+  return Boolean(window.Hands);
+}
+
+function landmarkDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function countRaisedFingers(landmarks) {
+  if (!landmarks) return 0;
+
+  const fingerPairs = [
+    [8, 6],
+    [12, 10],
+    [16, 14],
+    [20, 18],
+  ];
+  let count = fingerPairs.filter(([tip, pip]) => landmarks[tip].y < landmarks[pip].y - 0.035).length;
+
+  const thumbIsAwayFromPalm = Math.abs(landmarks[4].x - landmarks[2].x) > 0.08;
+  const thumbIsExtended =
+    thumbIsAwayFromPalm && landmarkDistance(landmarks[4], landmarks[0]) > landmarkDistance(landmarks[3], landmarks[0]);
+  if (thumbIsExtended) count += 1;
+
+  return count;
+}
+
+function countFingersFromResults(results) {
+  return (results.multiHandLandmarks || []).slice(0, 2).reduce(
+    (total, landmarks) => total + countRaisedFingers(landmarks),
+    0,
+  );
+}
+
 function createMathProblem() {
   const usePlus = Math.random() > 0.45;
 
@@ -294,39 +363,202 @@ function MathGameMode() {
   const [problem, setProblem] = useState(() => createMathProblem());
   const [detectedNumber, setDetectedNumber] = useState(null);
   const [feedback, setFeedback] = useState("Sẵn sàng");
-  const [recognizing, setRecognizing] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [fingerCount, setFingerCount] = useState(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [handStatus, setHandStatus] = useState("Bật camera rồi giơ số ngón tay");
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const handsRef = useRef(null);
+  const rafRef = useRef(null);
+  const processingRef = useRef(false);
+  const holdStartRef = useRef(0);
+  const stableFingerRef = useRef(null);
+  const submittedFingerRef = useRef(null);
+  const nextProblemTimerRef = useRef(null);
+  const answerLockedRef = useRef(false);
+  const problemRef = useRef(problem);
+  const wrongAttemptsRef = useRef(0);
 
   useEffect(() => {
-    return () => stopCamera(false);
+    return () => {
+      if (nextProblemTimerRef.current) {
+        clearTimeout(nextProblemTimerRef.current);
+      }
+      stopCamera(false);
+    };
   }, []);
+
+  useEffect(() => {
+    problemRef.current = problem;
+  }, [problem]);
+
+  useEffect(() => {
+    wrongAttemptsRef.current = wrongAttempts;
+  }, [wrongAttempts]);
 
   useEffect(() => {
     if (cameraOn && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
+      const playPromise = videoRef.current.play();
+      if (playPromise?.catch) playPromise.catch(() => {});
     }
   }, [cameraOn]);
 
-  function evaluateAnswer(number) {
-    setDetectedNumber(number);
-    if (number === problem.answer) {
-      setFeedback("Chính xác!");
-      speakVietnamese("Chính xác");
+  useEffect(() => {
+    if (!cameraOn) return undefined;
+
+    let cancelled = false;
+
+    async function setupHands() {
+      try {
+        await loadMediaPipeHands();
+        if (cancelled || !window.Hands) return;
+
+        const hands = new window.Hands({
+          locateFile: (file) => `${MEDIAPIPE_BASE_URL}/${file}`,
+        });
+        hands.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.68,
+          minTrackingConfidence: 0.58,
+        });
+        hands.onResults(processNumberHandResults);
+        handsRef.current = hands;
+        setHandStatus("Giữ nguyên số ngón tay trong 3 giây");
+
+        const loop = async () => {
+          if (cancelled) return;
+          const video = videoRef.current;
+          if (video?.readyState >= 2 && handsRef.current && !processingRef.current) {
+            processingRef.current = true;
+            try {
+              await handsRef.current.send({ image: video });
+            } catch {
+              setHandStatus("Nhận diện tay tạm dừng");
+            } finally {
+              processingRef.current = false;
+            }
+          }
+          rafRef.current = requestAnimationFrame(loop);
+        };
+
+        rafRef.current = requestAnimationFrame(loop);
+      } catch {
+        setCameraError("Không tải được nhận diện tay.");
+      }
+    }
+
+    setupHands();
+
+    return () => {
+      cancelled = true;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      processingRef.current = false;
+    };
+  }, [cameraOn]);
+
+  function resetHeldFinger() {
+    holdStartRef.current = 0;
+    stableFingerRef.current = null;
+    submittedFingerRef.current = null;
+    setFingerCount(null);
+    setHoldProgress(0);
+  }
+
+  function processNumberHandResults(results) {
+    if (answerLockedRef.current) return;
+
+    const totalFingers = countFingersFromResults(results);
+    if (!totalFingers) {
+      resetHeldFinger();
+      setHandStatus("Giơ số ngón tay để trả lời");
       return;
     }
 
-    setFeedback("Thử lại nhé");
+    const now = Date.now();
+    setFingerCount(totalFingers);
+    setDetectedNumber(totalFingers);
+
+    if (stableFingerRef.current !== totalFingers) {
+      stableFingerRef.current = totalFingers;
+      holdStartRef.current = now;
+      submittedFingerRef.current = null;
+      setHoldProgress(0);
+      setHandStatus(`Đang giữ số ${totalFingers}`);
+      return;
+    }
+
+    const elapsed = now - holdStartRef.current;
+    setHoldProgress(Math.min(1, elapsed / 3000));
+    setHandStatus(`Giữ số ${totalFingers} thêm ${Math.max(0, Math.ceil((3000 - elapsed) / 1000))} giây`);
+
+    if (elapsed >= 3000 && submittedFingerRef.current !== totalFingers) {
+      submittedFingerRef.current = totalFingers;
+      setHandStatus(`Đã nhận số ${totalFingers}`);
+      evaluateAnswer(totalFingers);
+    }
+  }
+
+  function scheduleNextProblem(delay = 1400) {
+    if (nextProblemTimerRef.current) {
+      clearTimeout(nextProblemTimerRef.current);
+    }
+    nextProblemTimerRef.current = setTimeout(() => {
+      nextProblem();
+      nextProblemTimerRef.current = null;
+    }, delay);
+  }
+
+  function evaluateAnswer(number) {
+    if (answerLockedRef.current) return;
+
+    setDetectedNumber(number);
+    if (number === problemRef.current.answer) {
+      answerLockedRef.current = true;
+      setWrongAttempts(0);
+      wrongAttemptsRef.current = 0;
+      setFeedback("Chính xác! Sang câu mới...");
+      speakVietnamese("Chính xác");
+      scheduleNextProblem();
+      return;
+    }
+
+    const nextAttempts = wrongAttemptsRef.current + 1;
+    wrongAttemptsRef.current = nextAttempts;
+    setWrongAttempts(nextAttempts);
+
+    if (nextAttempts >= 3) {
+      answerLockedRef.current = true;
+      setFeedback(`Đáp án là ${problemRef.current.answer}. Sang câu mới...`);
+      speakVietnamese(`Đáp án là ${problemRef.current.answer}`);
+      scheduleNextProblem(2400);
+      return;
+    }
+
+    setFeedback(`Thử lại nhé (${nextAttempts}/3)`);
     speakVietnamese("Thử lại nhé");
   }
 
   function nextProblem() {
+    if (nextProblemTimerRef.current) {
+      clearTimeout(nextProblemTimerRef.current);
+      nextProblemTimerRef.current = null;
+    }
     setProblem(createMathProblem());
     setDetectedNumber(null);
     setFeedback("Sẵn sàng");
+    setWrongAttempts(0);
+    wrongAttemptsRef.current = 0;
+    answerLockedRef.current = false;
+    resetHeldFinger();
+    setHandStatus(cameraOn ? "Giữ nguyên số ngón tay trong 3 giây" : "Bật camera rồi giơ số ngón tay");
   }
 
   async function startCamera() {
@@ -343,12 +575,20 @@ function MathGameMode() {
       });
       streamRef.current = stream;
       setCameraOn(true);
+      setHandStatus("Đang mở camera");
     } catch {
       setCameraError("Không mở được camera.");
     }
   }
 
   function stopCamera(updateState = true) {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    handsRef.current?.close?.();
+    handsRef.current = null;
+    processingRef.current = false;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -358,39 +598,8 @@ function MathGameMode() {
     }
     if (updateState) {
       setCameraOn(false);
-    }
-  }
-
-  async function recognizeFrame() {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || !video.videoWidth) {
-      setCameraError("Camera chưa sẵn sàng.");
-      return;
-    }
-
-    setRecognizing(true);
-    setCameraError("");
-    const context = canvas.getContext("2d");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const image = canvas.toDataURL("image/jpeg", 0.86);
-
-    try {
-      const result = await request("/api/recognize-number", {
-        method: "POST",
-        body: { image },
-      });
-      if (typeof result.number !== "number") {
-        setFeedback("Chưa nhận ra số");
-        return;
-      }
-      evaluateAnswer(result.number);
-    } catch (error) {
-      setCameraError(error.message || "Chưa nhận diện được.");
-    } finally {
-      setRecognizing(false);
+      setHandStatus("Bật camera rồi giơ số ngón tay");
+      resetHeldFinger();
     }
   }
 
@@ -403,7 +612,10 @@ function MathGameMode() {
         </div>
         <p className={feedback === "Chính xác!" ? "success-text" : ""}>{feedback}</p>
         {detectedNumber !== null ? (
-          <div className="detected-number">Đáp án nhận diện: {detectedNumber}</div>
+          <div className="detected-number">Số đang nhận: {detectedNumber}</div>
+        ) : null}
+        {wrongAttempts > 0 ? (
+          <div className="detected-number">Số lần sai: {wrongAttempts}/3</div>
         ) : null}
 
         <div className="manual-answer-grid">
@@ -426,7 +638,14 @@ function MathGameMode() {
           ) : (
             <div className="camera-placeholder">Camera</div>
           )}
-          <canvas ref={canvasRef} hidden />
+        </div>
+
+        <div className="camera-status">
+          <span>{handStatus}</span>
+          {fingerCount !== null ? <strong>{fingerCount}</strong> : null}
+          <div className="hold-meter" aria-hidden="true">
+            <span style={{ width: `${Math.round(holdProgress * 100)}%` }} />
+          </div>
         </div>
 
         <div className="camera-actions">
@@ -439,13 +658,6 @@ function MathGameMode() {
               Bật camera
             </button>
           )}
-          <button
-            className="btn primary"
-            onClick={recognizeFrame}
-            disabled={!cameraOn || recognizing}
-          >
-            {recognizing ? "Đang nhận diện..." : "Chụp đáp án"}
-          </button>
         </div>
 
         {cameraError ? <div className="error">{cameraError}</div> : null}

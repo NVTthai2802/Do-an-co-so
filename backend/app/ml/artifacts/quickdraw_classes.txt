@@ -1,0 +1,6 @@
+0: Hinh tron
+1: Hinh vuong
+2: Hinh tam giac
+3: Ngoi sao
+4: Duong thang
+5: Luc giac

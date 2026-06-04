@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import CompactNumberPicker from "../../../components/CompactNumberPicker";
 import LessonNav from "../../../components/LessonNav";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./TimeLesson.module.css";
 
 const hours = Array.from({ length: 12 }, (_, index) => index + 1);
-const minutes = Array.from({ length: 60 }, (_, index) => index + 1);
 
 const minuteGuide =
   "Mỗi vạch chia nhỏ trên mặt đồng hồ là một phút. Kim phút đi qua một số lớn là thêm năm phút. Giờ hơn là khi kim phút từ một đến ba mươi phút. Giờ rưỡi là ba mươi phút. Giờ kém là khi còn thiếu vài phút nữa tới giờ tiếp theo.";
@@ -17,12 +17,14 @@ function randomInt(min, max) {
 }
 
 function createGuess() {
-  const answer = randomInt(1, 60);
   return {
     hour: randomInt(1, 12),
-    minute: answer === 60 ? 0 : answer,
-    answer,
+    minute: randomInt(0, 59),
   };
+}
+
+function formatMinute(minute) {
+  return String(minute).padStart(2, "0");
 }
 
 function handPoint(angle, radius) {
@@ -75,8 +77,9 @@ function ClockFace({ hour = 12, minute = 0, size = "large" }) {
 export default function TimeLesson() {
   const [mode, setMode] = useState("hours");
   const [guess, setGuess] = useState(() => createGuess());
-  const [feedback, setFeedback] = useState("Chọn số phút mà kim phút đang chỉ.");
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [feedback, setFeedback] = useState("Ghép giờ và phút đúng với mặt đồng hồ.");
+  const [selectedHour, setSelectedHour] = useState(1);
+  const [selectedMinute, setSelectedMinute] = useState(0);
   const nextTimerRef = useRef(null);
 
   useEffect(() => {
@@ -95,15 +98,15 @@ export default function TimeLesson() {
       nextTimerRef.current = null;
     }
     setGuess(createGuess());
-    setSelectedAnswer(null);
-    setFeedback("Chọn số phút mà kim phút đang chỉ.");
+    setSelectedHour(1);
+    setSelectedMinute(0);
+    setFeedback("Ghép giờ và phút đúng với mặt đồng hồ.");
   }
 
-  function checkAnswer(number) {
-    setSelectedAnswer(number);
-    if (number === guess.answer) {
+  function checkAnswer() {
+    if (selectedHour === guess.hour && selectedMinute === guess.minute) {
       setFeedback("Chính xác! Sang câu mới...");
-      speakVietnamese(`Đúng rồi, kim phút chỉ ${number} phút`);
+      speakVietnamese(`Đúng rồi, ${guess.hour} giờ ${guess.minute} phút`);
       nextTimerRef.current = setTimeout(nextGuess, 1500);
       return;
     }
@@ -119,7 +122,7 @@ export default function TimeLesson() {
           <div>
             <span className="badge">Dạy giờ</span>
             <h1>Nhận diện đồng hồ</h1>
-            <p>Học giờ cơ bản, phút cơ bản và luyện đoán kim phút.</p>
+            <p>Học giờ cơ bản, phút cơ bản và luyện đoán giờ kèm phút.</p>
           </div>
           <div className="dashboard-actions">
             <LessonNav />
@@ -208,25 +211,36 @@ export default function TimeLesson() {
               </button>
             </div>
 
-            <div className={styles.minuteButtons} aria-label="Chọn số phút">
-              {minutes.map((number) => {
-                const isSelected = selectedAnswer === number;
-                const answerClass =
-                  isSelected && number === guess.answer
-                    ? styles.correct
-                    : isSelected
-                      ? styles.wrong
-                      : "";
-                return (
-                  <button
-                    key={number}
-                    className={`${styles.minuteButton} ${answerClass}`}
-                    onClick={() => checkAnswer(number)}
-                  >
-                    {number}
-                  </button>
-                );
-              })}
+            <div className={styles.timeAnswerPanel} aria-label="Ghép đáp án giờ và phút">
+              <div className={styles.timeInputPreview}>
+                <strong>{selectedHour}</strong>
+                <span>giờ</span>
+                <strong>{formatMinute(selectedMinute)}</strong>
+                <span>phút</span>
+              </div>
+
+              <div className={styles.timePickerGrid}>
+                <CompactNumberPicker
+                  label="Giờ"
+                  value={selectedHour}
+                  min={1}
+                  max={12}
+                  onChange={setSelectedHour}
+                  formatValue={(number) => `${number} giờ`}
+                />
+                <CompactNumberPicker
+                  label="Phút"
+                  value={selectedMinute}
+                  min={0}
+                  max={59}
+                  onChange={setSelectedMinute}
+                  formatValue={(number) => `${formatMinute(number)} phút`}
+                />
+              </div>
+
+              <button className="btn primary compact" onClick={checkAnswer}>
+                Kiểm tra
+              </button>
             </div>
           </section>
         ) : null}

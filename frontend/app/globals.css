@@ -547,6 +547,72 @@ input {
   font-size: 1.6rem;
 }
 
+.compact-number-picker {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #f7fbff;
+  border: 1px solid rgba(26, 24, 21, 0.06);
+}
+
+.compact-number-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 900;
+}
+
+.compact-number-head strong {
+  min-width: 56px;
+  text-align: center;
+  color: #1d4ed8;
+  font-size: 1.35rem;
+}
+
+.compact-number-group {
+  display: grid;
+  gap: 8px;
+}
+
+.compact-number-group > span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.compact-number-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+  gap: 8px;
+}
+
+.compact-number-button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(26, 24, 21, 0.06);
+}
+
+.compact-number-button.active {
+  background: linear-gradient(135deg, var(--accent), #5e74f6);
+  color: #fff;
+}
+
+.compact-number-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
 .letter-chip-grid {
   grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
 }
@@ -655,6 +721,11 @@ input {
   display: grid;
   grid-template-columns: repeat(5, minmax(44px, 1fr));
   gap: 10px;
+}
+
+.composed-answer-panel {
+  display: grid;
+  gap: 12px;
 }
 
 .wide-answer-grid {

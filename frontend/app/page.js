@@ -10,7 +10,7 @@ const features = [
     title: "Dạy chữ",
     text: "Làm quen bảng chữ cái qua thẻ chữ lớn, màu sắc tươi sáng và ví dụ dễ nhớ.",
     href: "/dashboard/letters",
-  },``
+  },
   {
     title: "Dạy hình vẽ",
     text: "Phân biệt hình tròn, hình vuông, tam giác và các hình cơ bản khác.",

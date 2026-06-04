@@ -7,12 +7,12 @@ import { clearSession, getToken, saveSession } from "../../lib/auth";
 import { request } from "../../lib/api";
 import { speakVietnamese } from "../../lib/speech";
 import LessonNav from "../../components/LessonNav";
+import CompactNumberPicker from "../../components/CompactNumberPicker";
 
 const digits = Array.from({ length: 10 }, (_, index) => index);
 const roundTens = Array.from({ length: 10 }, (_, index) => (index + 1) * 10);
 const composeTens = roundTens.filter((number) => number < 100);
 const answerChoices10 = Array.from({ length: 11 }, (_, index) => index);
-const answerChoices100 = Array.from({ length: 101 }, (_, index) => index);
 
 const digitWords = [
   "không",
@@ -523,6 +523,7 @@ function NumberSpotlight({ number, objectCount }) {
 function MathGameMode() {
   const [rangeLimit, setRangeLimit] = useState(10);
   const [problem, setProblem] = useState(() => createMathProblem(10));
+  const [composedAnswer, setComposedAnswer] = useState(0);
   const [detectedNumber, setDetectedNumber] = useState(null);
   const [feedback, setFeedback] = useState("Sẵn sàng");
   const [cameraOn, setCameraOn] = useState(false);
@@ -543,7 +544,6 @@ function MathGameMode() {
   const answerLockedRef = useRef(false);
   const problemRef = useRef(problem);
   const wrongAttemptsRef = useRef(0);
-  const answerChoices = rangeLimit === 10 ? answerChoices10 : answerChoices100;
 
   useEffect(() => {
     return () => {
@@ -715,6 +715,7 @@ function MathGameMode() {
       nextProblemTimerRef.current = null;
     }
     setProblem(createMathProblem(rangeLimit));
+    setComposedAnswer(0);
     setDetectedNumber(null);
     setFeedback("Sẵn sàng");
     setWrongAttempts(0);
@@ -735,6 +736,7 @@ function MathGameMode() {
     }
     setRangeLimit(nextLimit);
     setProblem(createMathProblem(nextLimit));
+    setComposedAnswer(0);
     setDetectedNumber(null);
     setFeedback("Sẵn sàng");
     setWrongAttempts(0);
@@ -821,13 +823,28 @@ function MathGameMode() {
             <div className="detected-number">Số lần sai: {wrongAttempts}/3</div>
           ) : null}
 
-          <div className={`manual-answer-grid ${rangeLimit === 100 ? "wide-answer-grid" : ""}`}>
-            {answerChoices.map((number) => (
-              <button key={number} className="chip" onClick={() => evaluateAnswer(number)}>
-                {number}
+          {rangeLimit === 10 ? (
+            <div className="manual-answer-grid">
+              {answerChoices10.map((number) => (
+                <button key={number} className="chip" onClick={() => evaluateAnswer(number)}>
+                  {number}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="composed-answer-panel">
+              <CompactNumberPicker
+                label="Ghép đáp án"
+                value={composedAnswer}
+                min={0}
+                max={100}
+                onChange={setComposedAnswer}
+              />
+              <button className="btn primary compact" onClick={() => evaluateAnswer(composedAnswer)}>
+                Kiểm tra
               </button>
-            ))}
-          </div>
+            </div>
+          )}
 
           <button className="btn primary compact" onClick={nextProblem}>
             Câu mới
@@ -869,7 +886,7 @@ function MathGameMode() {
         ) : (
           <div className="camera-panel number-note-panel">
             <span className="badge">Phạm vi 100</span>
-            <p>Với bài toán lớn hơn 10, bé chọn đáp án bằng các nút số ở bên trái.</p>
+            <p>Với bài toán lớn hơn 10, bé ghép hàng chục và hàng đơn vị rồi bấm kiểm tra.</p>
             <p>Phần giơ ngón tay vẫn dùng cho bài cộng trừ phạm vi 10.</p>
           </div>
         )}

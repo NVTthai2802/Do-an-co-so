@@ -150,6 +150,179 @@
   line-height: 1;
 }
 
+.flashcardSection {
+  display: grid;
+  gap: 18px;
+  max-width: 860px;
+}
+
+.flashcardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.flashcardHeader h2 {
+  margin: 4px 0 6px;
+  color: var(--text);
+  font-size: 1.5rem;
+}
+
+.flashcardHeader p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.flashcardStage {
+  perspective: 1400px;
+}
+
+.flashcardButton {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.flashcardCard {
+  position: relative;
+  min-height: 380px;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.55s ease, box-shadow 0.25s ease;
+  border-radius: 28px;
+  box-shadow: 0 18px 40px rgba(100, 80, 70, 0.12);
+}
+
+.flashcardCard:hover {
+  box-shadow: 0 22px 46px rgba(100, 80, 70, 0.16);
+}
+
+.flashcardCardFlipped {
+  transform: rotateY(180deg);
+}
+
+.flashcardFace {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 28px;
+  border-radius: 28px;
+  backface-visibility: hidden;
+  text-align: center;
+}
+
+.flashcardFront {
+  background: linear-gradient(180deg, #fff, #fff6ea);
+}
+
+.flashcardBack {
+  background: linear-gradient(180deg, #fff5ef, #fff);
+  transform: rotateY(180deg);
+}
+
+.flashcardLabel {
+  align-self: start;
+  justify-self: start;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(94, 116, 246, 0.12);
+  color: #5e74f6;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flashcardLetter {
+  color: #5e74f6;
+  font-size: clamp(4.25rem, 16vw, 8rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.flashcardEmoji {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.flashcardWord {
+  color: var(--text);
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 800;
+}
+
+.flashcardExample {
+  color: var(--text);
+  font-size: clamp(1.3rem, 2.5vw, 1.9rem);
+  font-weight: 800;
+}
+
+.flashcardHint {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.flashcardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.flashcardPill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.flashcardControls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.flashcardStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  gap: 8px;
+}
+
+.flashcardChip {
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 800;
+  min-height: 42px;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.flashcardChip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(100, 80, 70, 0.08);
+}
+
+.flashcardChipActive {
+  background: linear-gradient(135deg, var(--accent), #5e74f6);
+  color: #fff;
+}
+
 .cameraLetterPreview {
   width: 132px;
   height: 132px;
@@ -318,5 +491,25 @@
 
   .alphabetGrid {
     grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  }
+
+  .flashcardHeader {
+    flex-direction: column;
+  }
+
+  .flashcardCard {
+    min-height: 340px;
+  }
+
+  .flashcardFace {
+    padding: 22px;
+  }
+
+  .flashcardControls {
+    gap: 8px;
+  }
+
+  .flashcardChip {
+    min-height: 40px;
   }
 }

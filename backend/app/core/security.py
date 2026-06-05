@@ -1,7 +1,13 @@
 from passlib.context import CryptContext
 
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Prefer a pure-Python default so serverless deployments do not depend on bcrypt
+# at hash time. Existing bcrypt hashes remain verifiable.
+pwd_context = CryptContext(
+    schemes=["pbkdf2_sha256", "bcrypt"],
+    default="pbkdf2_sha256",
+    deprecated="auto",
+)
 
 
 def hash_password(password: str) -> str:

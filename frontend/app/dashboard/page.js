@@ -5,6 +5,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clearSession, getToken, saveSession } from "../../lib/auth";
 import { request } from "../../lib/api";
+import { recordLearningResult } from "../../lib/learning";
 import { speakVietnamese } from "../../lib/speech";
 import LessonNav from "../../components/LessonNav";
 import CompactNumberPicker from "../../components/CompactNumberPicker";
@@ -264,6 +265,12 @@ function DashboardHome({ user, onLogout }) {
 
         <div className="lesson-grid">
           <LessonLink
+            href="/dashboard/results"
+            icon="📊"
+            title="Kết quả học tập"
+            text="Xem tiến độ, kỹ năng, chuỗi học tập và gợi ý AI cho phụ huynh."
+          />
+          <LessonLink
             href="/dashboard?lesson=numbers"
             icon="🔢"
             title="Dạy số"
@@ -384,21 +391,77 @@ function NumberReadingMode() {
   function selectDigit(number) {
     setSelectedDigit(number);
     speakNumber(number);
+    void recordLearningResult({
+      module_key: "numbers",
+      activity_key: "digit_explore",
+      title: `Khám phá số ${number}`,
+      score: 85,
+      max_score: 100,
+      accuracy: 85,
+      time_spent_seconds: 0,
+      detail: {
+        mode: "digits",
+        number,
+      },
+    });
   }
 
   function selectTen(number) {
     setSelectedTen(number);
     speakNumber(number);
+    void recordLearningResult({
+      module_key: "numbers",
+      activity_key: "tens_explore",
+      title: `Khám phá số ${number}`,
+      score: 85,
+      max_score: 100,
+      accuracy: 85,
+      time_spent_seconds: 0,
+      detail: {
+        mode: "tens",
+        number,
+      },
+    });
   }
 
   function selectBase(number) {
     setSelectedBase(number);
     speakNumber(number + selectedUnit);
+    void recordLearningResult({
+      module_key: "numbers",
+      activity_key: "compose_base",
+      title: `Ghép số ${number + selectedUnit}`,
+      score: 85,
+      max_score: 100,
+      accuracy: 85,
+      time_spent_seconds: 0,
+      detail: {
+        mode: "compose",
+        base: number,
+        unit: selectedUnit,
+        result: number + selectedUnit,
+      },
+    });
   }
 
   function selectUnit(number) {
     setSelectedUnit(number);
     speakNumber(selectedBase + number);
+    void recordLearningResult({
+      module_key: "numbers",
+      activity_key: "compose_unit",
+      title: `Ghép số ${selectedBase + number}`,
+      score: 85,
+      max_score: 100,
+      accuracy: 85,
+      time_spent_seconds: 0,
+      detail: {
+        mode: "compose",
+        base: selectedBase,
+        unit: number,
+        result: selectedBase + number,
+      },
+    });
   }
 
   return (
@@ -702,11 +765,33 @@ function MathGameMode() {
 
     setDetectedNumber(number);
     if (number === problemRef.current.answer) {
+      const wrongCount = wrongAttemptsRef.current;
+      const sessionScore = Math.max(0, 100 - wrongCount * 20);
       answerLockedRef.current = true;
       setWrongAttempts(0);
       wrongAttemptsRef.current = 0;
       setFeedback("Chính xác! Sang câu mới...");
       speakVietnamese("Chính xác");
+      void recordLearningResult({
+        module_key: "math",
+        activity_key: rangeLimit === 10 ? "camera_math_10" : "compose_math_100",
+        title: `Cộng trừ phạm vi ${rangeLimit}`,
+        score: sessionScore,
+        max_score: 100,
+        accuracy: sessionScore,
+        time_spent_seconds: 0,
+        detail: {
+          mode: rangeLimit === 10 ? "camera" : "compose",
+          range_limit: rangeLimit,
+          left: problemRef.current.left,
+          right: problemRef.current.right,
+          operator: problemRef.current.operator,
+          answer: problemRef.current.answer,
+          detected_number: number,
+          wrong_attempts: wrongCount,
+          correct: true,
+        },
+      });
       scheduleNextProblem();
       return;
     }
@@ -719,6 +804,26 @@ function MathGameMode() {
       answerLockedRef.current = true;
       setFeedback(`Đáp án là ${problemRef.current.answer}. Sang câu mới...`);
       speakVietnamese(`Đáp án là ${problemRef.current.answer}`);
+      void recordLearningResult({
+        module_key: "math",
+        activity_key: rangeLimit === 10 ? "camera_math_10" : "compose_math_100",
+        title: `Cộng trừ phạm vi ${rangeLimit}`,
+        score: 0,
+        max_score: 100,
+        accuracy: 0,
+        time_spent_seconds: 0,
+        detail: {
+          mode: rangeLimit === 10 ? "camera" : "compose",
+          range_limit: rangeLimit,
+          left: problemRef.current.left,
+          right: problemRef.current.right,
+          operator: problemRef.current.operator,
+          answer: problemRef.current.answer,
+          detected_number: number,
+          wrong_attempts: nextAttempts,
+          correct: false,
+        },
+      });
       scheduleNextProblem(2400);
       return;
     }

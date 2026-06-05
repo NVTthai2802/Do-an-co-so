@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_URL } from "../../../lib/api";
+import { getToken } from "../../../lib/auth";
 import {
   createSpeechRecognition,
   isSpeechRecognitionSupported,
@@ -94,9 +95,14 @@ export default function SpeechToText() {
     async (spokenText) => {
       setEvaluating(true);
       try {
+        const headers = { "Content-Type": "application/json" };
+        const token = getToken();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
         const response = await fetch(`${API_URL}/stt/evaluate-reading`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             reference_text: referenceText,
             spoken_text: spokenText,

@@ -8,6 +8,7 @@ const lessonLinks = [
   { href: "/dashboard/letters", path: "/dashboard/letters", label: "Chữ" },
   { href: "/dashboard/shapes", path: "/dashboard/shapes", label: "Hình" },
   { href: "/dashboard/time", path: "/dashboard/time", label: "Giờ" },
+  { href: "/dashboard/results", path: "/dashboard/results", label: "Báo cáo" },
 ];
 
 export default function LessonNav() {

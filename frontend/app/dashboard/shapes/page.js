@@ -345,6 +345,7 @@ export default function HocHinh() {
           activityLabel="hình"
           endpoint="/api/recognize-shape"
           items={CAMERA_SHAPES}
+          learningModuleKey="geometry"
         />
       )}
         </div>

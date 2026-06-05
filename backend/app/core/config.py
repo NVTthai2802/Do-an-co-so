@@ -41,57 +41,26 @@ def normalize_database_url(url: str) -> str:
         url = url.replace("postgres://", "postgresql://", 1)
 
     parsed = urlparse(url)
-    if os.getenv("VERCEL") == "1" and parsed.hostname in LOCAL_DATABASE_HOSTS:
-        raise DatabaseConfigError(
-            "DATABASE_URL dang tro toi localhost. Tren Vercel phai dung Postgres cloud "
-            "nhu Vercel Postgres, Neon hoac Supabase."
-        )
-
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    safe_query = {
-        key: value
-        for key, value in query.items()
-        if key in LIBPQ_QUERY_PARAMS
-    }
+    safe_query = {key: value for key, value in query.items() if key in LIBPQ_QUERY_PARAMS}
+
     sslmode = safe_query.get("sslmode")
     if sslmode:
         normalized_sslmode = SSL_MODE_ALIASES.get(sslmode.lower(), sslmode.lower())
         if normalized_sslmode not in VALID_SSL_MODES:
             raise DatabaseConfigError(
-                "sslmode trong DATABASE_URL khong hop le. Hay dung sslmode=require cho Neon."
+                "sslmode trong DATABASE_URL khong hop le. Hay dung sslmode=require cho Postgres cloud."
             )
         safe_query["sslmode"] = normalized_sslmode
-
-    if os.getenv("VERCEL") == "1" and parsed.hostname not in LOCAL_DATABASE_HOSTS:
-        safe_query.setdefault("sslmode", "require")
 
     return urlunparse(parsed._replace(query=urlencode(safe_query)))
 
 
 def get_database_url() -> str:
-    env_names = (
-        [
-            "POSTGRES_URL",
-            "POSTGRES_URL_NON_POOLING",
-            "DATABASE_URL",
-            "POSTGRES_PRISMA_URL",
-        ]
-        if os.getenv("VERCEL") == "1"
-        else [
-            "DATABASE_URL",
-            "POSTGRES_URL",
-            "POSTGRES_URL_NON_POOLING",
-            "POSTGRES_PRISMA_URL",
-        ]
-    )
-    url = next((os.getenv(name) for name in env_names if os.getenv(name)), None)
-    if url:
-        return normalize_database_url(url)
-
-    if os.getenv("VERCEL") == "1":
-        raise DatabaseConfigError(
-            "Thieu bien moi truong DATABASE_URL hoac POSTGRES_URL tren Vercel."
-        )
+    for name in ("DATABASE_URL", "POSTGRES_URL", "POSTGRES_URL_NON_POOLING", "POSTGRES_PRISMA_URL"):
+        value = os.getenv(name)
+        if value:
+            return normalize_database_url(value)
 
     return DEFAULT_LOCAL_DATABASE_URL
 
@@ -106,7 +75,14 @@ def get_cors_origins() -> list[str]:
 
 def get_smtp_config() -> dict[str, object]:
     host = os.getenv("SMTP_HOST", "").strip()
-    port = int(os.getenv("SMTP_PORT", "587"))
+    raw_port = os.getenv("SMTP_PORT", "").strip()
+    try:
+        port = int(raw_port) if raw_port else 587
+    except ValueError:
+        port = 587
+    if port <= 0:
+        port = 587
+
     username = os.getenv("SMTP_USER", "").strip()
     password = os.getenv("SMTP_PASSWORD", "")
     sender = os.getenv("SMTP_FROM", "").strip() or username
@@ -154,10 +130,5 @@ def get_app_base_url() -> str:
     )
     if raw_url:
         return raw_url.rstrip("/")
-
-    vercel_url = os.getenv("VERCEL_URL", "").strip()
-    if vercel_url:
-        vercel_url = vercel_url.removeprefix("https://").removeprefix("http://")
-        return f"https://{vercel_url.rstrip('/')}"
 
     return "http://localhost:3000"

@@ -13,15 +13,6 @@ class LoginReq(BaseModel):
     password: str
 
 
-class VerifyOtpReq(BaseModel):
-    code: str
-    verification_token: str
-
-
-class ResendOtpReq(BaseModel):
-    verification_token: str
-
-
 class ForgotPasswordReq(BaseModel):
     email: str
 

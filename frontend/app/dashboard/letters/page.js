@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import AirDrawActivity from "../../../components/AirDrawActivity";
+import LetterFlashcard from "../../../components/LetterFlashcard";
 import LessonNav from "../../../components/LessonNav";
+import { recordLearningResult } from "../../../lib/learning";
 import { speakVietnamese } from "../../../lib/speech";
-import styles from "./HocChu.module.css";;
+import styles from "./HocChu.module.css";
 
 const LETTER_ITEMS = [
   { letter: "A", sound: "a", emoji: "👕", word: "áo", example: "áo màu xanh" },
@@ -39,51 +40,57 @@ const LETTER_ITEMS = [
   { letter: "Y", sound: "y", emoji: "🧑‍⚕️", word: "y tá", example: "y tá chăm bé" },
 ];
 
-const ALPHABET = LETTER_ITEMS.map((item) => item.letter);
-const CHU_DATA = Object.fromEntries(LETTER_ITEMS.map((item) => [item.letter, item]));
-
-function drawLetterTemplate(letter) {
-  return (ctx, width, height) => {
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = `900 ${Math.round(height * 0.78)}px Arial, sans-serif`;
-    ctx.fillText(letter, width / 2, height / 2 + height * 0.04);
-  };
-}
-
-const CAMERA_LETTERS = ALPHABET.map((letter) => ({
-  id: letter,
-  label: letter,
-  speech: CHU_DATA[letter].sound,
-  color: "#5e74f6",
-  preview: <span className={styles.cameraLetterPreview}>{letter}</span>,
-  aliases: [letter, CHU_DATA[letter].sound, `chu ${letter}`, `chữ ${letter}`],
-  drawTemplate: drawLetterTemplate(letter),
-}));
-
 export default function HocChu() {
-  const [activeTab, setActiveTab] = useState("hoc"); // "hoc" | "camera"
-  const [selectedLetter, setSelectedLetter] = useState("A");
+  const [activeTab, setActiveTab] = useState("hoc");
+  const [selectedLetter, setSelectedLetter] = useState(LETTER_ITEMS[0]);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const speakLetter = (letter) => speakVietnamese(CHU_DATA[letter].sound);
-  const speakWord = (letter) => speakVietnamese(CHU_DATA[letter].word);
+  const speakLetter = (letter) => speakVietnamese(letter.sound);
+  const speakWord = (letter) => speakVietnamese(letter.word);
 
   const selectLetter = (letter) => {
-    if (letter === selectedLetter) {
+    if (letter.letter === selectedLetter.letter) {
       speakLetter(letter);
+      void recordLearningResult({
+        module_key: "letters",
+        activity_key: "letter_explore",
+        title: `Khám phá chữ ${letter.letter}`,
+        score: 85,
+        max_score: 100,
+        accuracy: 85,
+        time_spent_seconds: 0,
+        detail: {
+          letter: letter.letter,
+          word: letter.word,
+          example: letter.example,
+          tab: activeTab,
+        },
+      });
       return;
     }
+
     setIsAnimating(true);
-    setTimeout(() => {
+    window.setTimeout(() => {
       setSelectedLetter(letter);
       setIsAnimating(false);
       speakLetter(letter);
-    }, 200);
+      void recordLearningResult({
+        module_key: "letters",
+        activity_key: "letter_explore",
+        title: `Khám phá chữ ${letter.letter}`,
+        score: 85,
+        max_score: 100,
+        accuracy: 85,
+        time_spent_seconds: 0,
+        detail: {
+          letter: letter.letter,
+          word: letter.word,
+          example: letter.example,
+          tab: activeTab,
+        },
+      });
+    }, 180);
   };
-
-  const info = CHU_DATA[selectedLetter];
 
   return (
     <main className="dashboard-shell">
@@ -91,7 +98,8 @@ export default function HocChu() {
         <div className="dashboard-header">
           <div>
             <span className="badge">Dạy chữ</span>
-            <h1>Học Chữ Cái</h1>
+            <h1>Học chữ cái</h1>
+            <p>Nhìn, nghe và lật thẻ để ghi nhớ từng chữ cái tiếng Việt.</p>
           </div>
           <div className="dashboard-actions">
             <LessonNav />
@@ -102,74 +110,64 @@ export default function HocChu() {
         </div>
 
         <div className={styles.lessonContent}>
-      <h1 className={styles.title}>🔤 Học Chữ Cái</h1>
+          <h1 className={styles.title}>🔤 Học chữ cái</h1>
 
-      {/* Tab bar */}
-      <div className={styles.tabBar}>
-        <button
-          className={`${styles.tab} ${activeTab === "hoc" ? styles.tabActive : ""}`}
-          onClick={() => setActiveTab("hoc")}
-        >
-          📖 Học Chữ
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === "camera" ? styles.tabActive : ""}`}
-          onClick={() => setActiveTab("camera")}
-        >
-          📷 Nhận Dạng
-        </button>
-      </div>
-
-      {/* ===== TAB HỌC CHỮ ===== */}
-      {activeTab === "hoc" && (
-        <div className={styles.learnSection}>
-          {/* Alphabet grid */}
-          <div className={styles.alphabetGrid}>
-            {ALPHABET.map((letter) => (
-              <button
-                key={letter}
-                className={`${styles.letterBtn} ${selectedLetter === letter ? styles.letterBtnActive : ""}`}
-                onClick={() => selectLetter(letter)}
-              >
-                {letter}
-              </button>
-            ))}
+          <div className={styles.tabBar}>
+            <button
+              className={`${styles.tab} ${activeTab === "hoc" ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab("hoc")}
+            >
+              📖 Học chữ
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === "flashcard" ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab("flashcard")}
+            >
+              🃏 Flashcard
+            </button>
           </div>
 
-          {/* Detail card */}
-          <div className={`${styles.card} ${isAnimating ? styles.cardFade : ""}`}>
-            <div className={styles.letterDisplay}>{selectedLetter}</div>
-            <div className={styles.emoji}>{info.emoji}</div>
-            <div className={styles.word}>{info.word}</div>
-            <div className={styles.example}>{info.example}</div>
-            <div className={styles.voiceActions}>
-              <button className="btn primary compact" onClick={() => speakLetter(selectedLetter)}>
-                Nghe chữ
-              </button>
-              <button className="btn secondary compact" onClick={() => speakWord(selectedLetter)}>
-                Nghe từ
-              </button>
-            </div>
+          {activeTab === "hoc" ? (
+            <div className={styles.learnSection}>
+              <div className={styles.alphabetGrid}>
+                {LETTER_ITEMS.map((letter) => (
+                  <button
+                    key={letter.letter}
+                    className={`${styles.letterBtn} ${
+                      selectedLetter.letter === letter.letter ? styles.letterBtnActive : ""
+                    }`}
+                    onClick={() => selectLetter(letter)}
+                  >
+                    {letter.letter}
+                  </button>
+                ))}
+              </div>
 
-            {/* lowercase */}
-            <div className={styles.lowercaseRow}>
-              <span className={styles.lowercaseLabel}>Chữ thường:</span>
-              <span className={styles.lowercase}>
-                {selectedLetter.toLocaleLowerCase("vi-VN")}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className={`${styles.card} ${isAnimating ? styles.cardFade : ""}`}>
+                <div className={styles.letterDisplay}>{selectedLetter.letter}</div>
+                <div className={styles.emoji}>{selectedLetter.emoji}</div>
+                <div className={styles.word}>{selectedLetter.word}</div>
+                <div className={styles.example}>{selectedLetter.example}</div>
+                <div className={styles.voiceActions}>
+                  <button className="btn primary compact" onClick={() => speakLetter(selectedLetter)}>
+                    Nghe chữ
+                  </button>
+                  <button className="btn secondary compact" onClick={() => speakWord(selectedLetter)}>
+                    Nghe từ
+                  </button>
+                </div>
 
-      {/* ===== TAB CAMERA ===== */}
-      {activeTab === "camera" && (
-        <AirDrawActivity
-          activityLabel="chữ"
-          endpoint="/api/recognize-letter"
-          items={CAMERA_LETTERS}
-        />
-      )}
+                <div className={styles.lowercaseRow}>
+                  <span className={styles.lowercaseLabel}>Chữ thường:</span>
+                  <span className={styles.lowercase}>
+                    {selectedLetter.letter.toLocaleLowerCase("vi-VN")}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <LetterFlashcard items={LETTER_ITEMS} initialLetter={selectedLetter.letter} />
+          )}
         </div>
       </section>
     </main>

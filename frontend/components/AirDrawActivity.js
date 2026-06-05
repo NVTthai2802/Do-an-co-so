@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { request } from "../lib/api";
+import { recordLearningResult } from "../lib/learning";
 import { speakVietnamese } from "../lib/speech";
 import styles from "./AirDrawActivity.module.css";
 
@@ -216,7 +217,12 @@ function scoreAgainstTemplate(canvas, item) {
   return Math.max(0, Math.min(100, Math.round(f1 * 92 + balance * 8)));
 }
 
-export default function AirDrawActivity({ activityLabel, endpoint, items }) {
+export default function AirDrawActivity({
+  activityLabel,
+  endpoint,
+  items,
+  learningModuleKey = "geometry",
+}) {
   const [mode, setMode] = useState("guess");
   const [target, setTarget] = useState(() => items[0]);
   const [cameraOn, setCameraOn] = useState(false);
@@ -259,6 +265,13 @@ export default function AirDrawActivity({ activityLabel, endpoint, items }) {
       setHandStatus(status);
     }
   }, []);
+
+  const logLearningResult = useCallback((payload) => {
+    void recordLearningResult({
+      module_key: learningModuleKey,
+      ...payload,
+    });
+  }, [learningModuleKey]);
 
   useEffect(() => {
     isRecognizingRef.current = isRecognizing;
@@ -566,6 +579,22 @@ export default function AirDrawActivity({ activityLabel, endpoint, items }) {
     const correct = item.id === target.id;
     setFeedback(correct ? "Đúng rồi!" : "Chưa đúng, thử lại nhé.");
     speakVietnamese(correct ? `Đúng rồi, đó là ${targetSpeech}` : "Thử lại nhé");
+    logLearningResult({
+      activity_key: "camera_guess",
+      title: `Luyện ${actionLabel}`,
+      score: correct ? 90 : 0,
+      max_score: 100,
+      accuracy: correct ? 90 : 0,
+      time_spent_seconds: 0,
+      detail: {
+        mode: "guess",
+        target_id: target.id,
+        target_label: target.label,
+        chosen_id: item.id,
+        chosen_label: item.label,
+        correct,
+      },
+    });
     if (correct) {
       scheduleNextTarget("Đã sang đề mới");
     }
@@ -605,11 +634,42 @@ export default function AirDrawActivity({ activityLabel, endpoint, items }) {
     const result = await recognizeDrawing();
     if (!result || result.error) {
       setFeedback(`Model ${actionLabel} chưa sẵn sàng hoặc chưa nhận ra nét vẽ.`);
+      logLearningResult({
+        activity_key: "camera_recognition",
+        title: `Luyện ${actionLabel}`,
+        score: 0,
+        max_score: 100,
+        accuracy: 0,
+        time_spent_seconds: 0,
+        detail: {
+          mode: "guess",
+          target_id: target.id,
+          target_label: target.label,
+          error: result?.error || "no_prediction",
+        },
+      });
       return;
     }
 
     const correct = result.matchedId === target.id;
     setFeedback(correct ? "Vẽ đúng rồi!" : `Máy đoán là ${result.displayLabel}.`);
+    logLearningResult({
+      activity_key: "camera_recognition",
+      title: `Luyện ${actionLabel}`,
+      score: correct ? 100 : 0,
+      max_score: 100,
+      accuracy: correct ? 100 : 0,
+      time_spent_seconds: 0,
+      detail: {
+        mode: "guess",
+        target_id: target.id,
+        target_label: target.label,
+        predicted_label: result.displayLabel,
+        predicted_id: result.matchedId || "",
+        confidence: typeof result.confidence === "number" ? result.confidence : null,
+        correct,
+      },
+    });
     if (correct) {
       speakVietnamese(`Đúng rồi, đó là ${targetSpeech}`);
       scheduleNextTarget("Đã sang đề mới");
@@ -631,7 +691,24 @@ export default function AirDrawActivity({ activityLabel, endpoint, items }) {
       speakVietnamese(`${nextScore} điểm, mình thử lại nhé`);
     }
 
-    await recognizeDrawing();
+    const result = await recognizeDrawing();
+    logLearningResult({
+      activity_key: "camera_guide",
+      title: `Luyện ${actionLabel}`,
+      score: nextScore,
+      max_score: 100,
+      accuracy: nextScore,
+      time_spent_seconds: 0,
+      detail: {
+        mode: "guide",
+        target_id: target.id,
+        target_label: target.label,
+        predicted_label: result?.displayLabel || "",
+        predicted_id: result?.matchedId || "",
+        confidence: typeof result?.confidence === "number" ? result.confidence : null,
+        score: nextScore,
+      },
+    });
   }
 
   useEffect(() => {

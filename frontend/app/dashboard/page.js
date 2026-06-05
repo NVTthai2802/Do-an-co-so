@@ -287,6 +287,12 @@ function DashboardHome({ user, onLogout }) {
             title="Dạy giờ"
             text="Nhận biết đồng hồ và luyện đoán giờ."
           />
+          <LessonLink
+            href="/dashboard/document"
+            icon="📄"
+            title="Quét tài liệu"
+            text="Chuyển tài liệu thành văn bản."
+          />
         </div>
       </section>
     </main>

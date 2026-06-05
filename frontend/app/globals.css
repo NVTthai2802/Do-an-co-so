@@ -642,6 +642,13 @@ input {
   font-weight: 800;
 }
 
+.voice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
 .letter-display {
   display: grid;
   grid-template-columns: 120px 120px;

@@ -120,6 +120,13 @@
   line-height: 1.6;
 }
 
+.voiceActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
 .lowercaseRow {
   display: inline-flex;
   align-items: center;

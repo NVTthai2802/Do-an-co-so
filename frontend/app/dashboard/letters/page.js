@@ -5,38 +5,42 @@ import { useState } from "react";
 import AirDrawActivity from "../../../components/AirDrawActivity";
 import LessonNav from "../../../components/LessonNav";
 import { speakVietnamese } from "../../../lib/speech";
-import styles from "./HocChu.module.css";
+import styles from "./HocChu.module.css";;
 
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const LETTER_ITEMS = [
+  { letter: "A", sound: "a", emoji: "👕", word: "áo", example: "áo màu xanh" },
+  { letter: "Ă", sound: "ă", emoji: "🍚", word: "ăn", example: "ăn cơm" },
+  { letter: "Â", sound: "â", emoji: "🫖", word: "ấm", example: "ấm nước" },
+  { letter: "B", sound: "bờ", emoji: "👶", word: "bé", example: "bé ngoan" },
+  { letter: "C", sound: "cờ", emoji: "🐟", word: "cá", example: "cá vàng" },
+  { letter: "D", sound: "dờ", emoji: "🐐", word: "dê", example: "dê con" },
+  { letter: "Đ", sound: "đờ", emoji: "💡", word: "đèn", example: "đèn sáng" },
+  { letter: "E", sound: "e", emoji: "🙂", word: "em", example: "em bé" },
+  { letter: "Ê", sound: "ê", emoji: "🐸", word: "ếch", example: "ếch xanh" },
+  { letter: "G", sound: "gờ", emoji: "🐔", word: "gà", example: "gà con" },
+  { letter: "H", sound: "hờ", emoji: "🌸", word: "hoa", example: "hoa hồng" },
+  { letter: "I", sound: "i", emoji: "🖨️", word: "in", example: "in hình" },
+  { letter: "K", sound: "ca", emoji: "🍬", word: "kẹo", example: "kẹo ngọt" },
+  { letter: "L", sound: "lờ", emoji: "🍃", word: "lá", example: "lá xanh" },
+  { letter: "M", sound: "mờ", emoji: "🐱", word: "mèo", example: "mèo con" },
+  { letter: "N", sound: "nờ", emoji: "🎀", word: "nơ", example: "nơ đỏ" },
+  { letter: "O", sound: "o", emoji: "🐝", word: "ong", example: "ong mật" },
+  { letter: "Ô", sound: "ô", emoji: "🚗", word: "ô tô", example: "ô tô đỏ" },
+  { letter: "Ơ", sound: "ơ", emoji: "🌶️", word: "ớt", example: "ớt đỏ" },
+  { letter: "P", sound: "pờ", emoji: "🍜", word: "phở", example: "phở thơm" },
+  { letter: "Q", sound: "quờ", emoji: "🍊", word: "quả", example: "quả cam" },
+  { letter: "R", sound: "rờ", emoji: "🧺", word: "rổ", example: "rổ tre" },
+  { letter: "S", sound: "sờ", emoji: "⭐", word: "sao", example: "sao sáng" },
+  { letter: "T", sound: "tờ", emoji: "🐰", word: "thỏ", example: "thỏ trắng" },
+  { letter: "U", sound: "u", emoji: "🥤", word: "uống", example: "uống nước" },
+  { letter: "Ư", sound: "ư", emoji: "🌱", word: "ươm", example: "ươm mầm" },
+  { letter: "V", sound: "vờ", emoji: "🐘", word: "voi", example: "voi con" },
+  { letter: "X", sound: "xờ", emoji: "🥭", word: "xoài", example: "xoài vàng" },
+  { letter: "Y", sound: "y", emoji: "🧑‍⚕️", word: "y tá", example: "y tá chăm bé" },
+];
 
-const CHU_DATA = {
-  A: { emoji: "🍎", word: "Ăn", example: "A như Ăn cơm" },
-  B: { emoji: "🦋", word: "Bướm", example: "B như Bướm bay" },
-  C: { emoji: "🐱", word: "Cá", example: "C như Cá vàng" },
-  D: { emoji: "🍉", word: "Dưa", example: "D như Dưa hấu" },
-  E: { emoji: "🦅", word: "Ếch", example: "E như Ếch xanh" },
-  F: { emoji: "🌺", word: "Flower", example: "F như Flower đẹp" },
-  G: { emoji: "🐔", word: "Gà", example: "G như Gà con" },
-  H: { emoji: "🌸", word: "Hoa", example: "H như Hoa hồng" },
-  I: { emoji: "🎁", word: "ích", example: "I như Ích lợi" },
-  J: { emoji: "🧃", word: "Juice", example: "J như Juice thơm" },
-  K: { emoji: "🍬", word: "Kẹo", example: "K như Kẹo ngọt" },
-  L: { emoji: "🍃", word: "Lá", example: "L như Lá xanh" },
-  M: { emoji: "🐱", word: "Mèo", example: "M như Mèo con" },
-  N: { emoji: "🌙", word: "Núi", example: "N như Núi cao" },
-  O: { emoji: "🐞", word: "Ốc", example: "O như Ốc sên" },
-  P: { emoji: "🎨", word: "Phố", example: "P như Phố đẹp" },
-  Q: { emoji: "🍊", word: "Quả", example: "Q như Quả cam" },
-  R: { emoji: "🐉", word: "Rồng", example: "R như Rồng bay" },
-  S: { emoji: "🌟", word: "Sao", example: "S như Sao sáng" },
-  T: { emoji: "🌳", word: "Thỏ", example: "T như Thỏ trắng" },
-  U: { emoji: "🦄", word: "Unicorn", example: "U như Unicorn" },
-  V: { emoji: "🦆", word: "Vịt", example: "V như Vịt vàng" },
-  W: { emoji: "🌊", word: "Water", example: "W như Water xanh" },
-  X: { emoji: "🥝", word: "Xoài", example: "X như Xoài vàng" },
-  Y: { emoji: "🌻", word: "Yêu", example: "Y như Yêu thương" },
-  Z: { emoji: "⚡", word: "Zip", example: "Z như Zip nhanh" },
-};
+const ALPHABET = LETTER_ITEMS.map((item) => item.letter);
+const CHU_DATA = Object.fromEntries(LETTER_ITEMS.map((item) => [item.letter, item]));
 
 function drawLetterTemplate(letter) {
   return (ctx, width, height) => {
@@ -51,10 +55,10 @@ function drawLetterTemplate(letter) {
 const CAMERA_LETTERS = ALPHABET.map((letter) => ({
   id: letter,
   label: letter,
-  speech: `chữ ${letter}`,
+  speech: CHU_DATA[letter].sound,
   color: "#5e74f6",
   preview: <span className={styles.cameraLetterPreview}>{letter}</span>,
-  aliases: [letter, `letter ${letter}`, `chu ${letter}`, `chữ ${letter}`],
+  aliases: [letter, CHU_DATA[letter].sound, `chu ${letter}`, `chữ ${letter}`],
   drawTemplate: drawLetterTemplate(letter),
 }));
 
@@ -63,10 +67,8 @@ export default function HocChu() {
   const [selectedLetter, setSelectedLetter] = useState("A");
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const speakLetter = (letter) => {
-    const item = CHU_DATA[letter];
-    speakVietnamese(`${letter} như ${item.word}`);
-  };
+  const speakLetter = (letter) => speakVietnamese(CHU_DATA[letter].sound);
+  const speakWord = (letter) => speakVietnamese(CHU_DATA[letter].word);
 
   const selectLetter = (letter) => {
     if (letter === selectedLetter) {
@@ -140,15 +142,20 @@ export default function HocChu() {
             <div className={styles.emoji}>{info.emoji}</div>
             <div className={styles.word}>{info.word}</div>
             <div className={styles.example}>{info.example}</div>
-            <button className="btn primary compact" onClick={() => speakLetter(selectedLetter)}>
-              Nghe phát âm
-            </button>
+            <div className={styles.voiceActions}>
+              <button className="btn primary compact" onClick={() => speakLetter(selectedLetter)}>
+                Nghe chữ
+              </button>
+              <button className="btn secondary compact" onClick={() => speakWord(selectedLetter)}>
+                Nghe từ
+              </button>
+            </div>
 
             {/* lowercase */}
             <div className={styles.lowercaseRow}>
               <span className={styles.lowercaseLabel}>Chữ thường:</span>
               <span className={styles.lowercase}>
-                {selectedLetter.toLowerCase()}
+                {selectedLetter.toLocaleLowerCase("vi-VN")}
               </span>
             </div>
           </div>

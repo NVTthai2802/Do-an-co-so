@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, health, recognition, document
+from app.api.routes import auth, health, recognition, document, stt
 from app.core.config import get_cors_origins
 from app.db.connection import get_db
 
@@ -19,6 +19,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(recognition.router)
     app.include_router(document.router)
+    app.include_router(stt.router)
     app.include_router(health.router)
 
     @app.on_event("startup")

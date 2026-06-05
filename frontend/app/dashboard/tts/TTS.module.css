@@ -1,0 +1,523 @@
+/* ── Text-to-Speech – Module Styles ── */
+
+/* ─── Container ─── */
+.container {
+  display: grid;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+/* ─── Status Badge ─── */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.statusReady {
+  background: #eef9f2;
+  color: #2d6b4f;
+}
+
+.statusPlaying {
+  background: linear-gradient(135deg, #fff0e7 0%, #ffe8db 100%);
+  color: var(--primary-dark);
+  animation: statusGlow 2s ease-in-out infinite;
+}
+
+.statusPaused {
+  background: #f0f4ff;
+  color: #5e74f6;
+}
+
+@keyframes statusGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 143, 127, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 143, 127, 0.12); }
+}
+
+/* ─── Text Input Area ─── */
+.textInputArea {
+  position: relative;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #fff 0%, #fffcfa 100%);
+  border: 1.5px solid rgba(26, 24, 21, 0.08);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(100, 80, 70, 0.05);
+  transition: all 0.3s ease;
+}
+
+.textInputArea:focus-within {
+  border-color: rgba(255, 168, 160, 0.4);
+  box-shadow: 0 6px 28px rgba(100, 80, 70, 0.08),
+              0 0 0 3px rgba(255, 168, 160, 0.1);
+}
+
+.textInputHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(26, 24, 21, 0.04);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.textInputLabel {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.textInput {
+  width: 100%;
+  min-height: 200px;
+  padding: 20px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text);
+  resize: vertical;
+}
+
+.textInput:focus {
+  outline: none;
+}
+
+.textInput::placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.charCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 240, 231, 0.7);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.charCountActive {
+  color: var(--primary-dark);
+  background: #fff0e7;
+}
+
+/* ─── Player Controls ─── */
+.playerControls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #fffaf7 0%, #fff6f0 100%);
+  border: 1.5px solid rgba(26, 24, 21, 0.06);
+  box-shadow: 0 4px 16px rgba(100, 80, 70, 0.05);
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.playerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.playerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mainControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ─── Play Button ─── */
+.playButton {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 122, 89, 0.35);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.playButton:hover:not(:disabled) {
+  transform: scale(1.08);
+  box-shadow: 0 12px 32px rgba(255, 122, 89, 0.45);
+}
+
+.playButton:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.playButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.playButtonActive {
+  animation: playPulse 1.8s ease-in-out infinite;
+  background: linear-gradient(135deg, #ff9a8b 0%, #ff8f7f 100%);
+}
+
+@keyframes playPulse {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(255, 122, 89, 0.35);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(255, 122, 89, 0.5), 0 0 0 8px rgba(255, 168, 160, 0.15);
+    transform: scale(1.04);
+  }
+}
+
+/* ─── Control Button ─── */
+.controlButton {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid rgba(26, 24, 21, 0.08);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.controlButton:hover:not(:disabled) {
+  background: #fff8f5;
+  border-color: rgba(255, 168, 160, 0.3);
+  box-shadow: 0 4px 12px rgba(100, 80, 70, 0.08);
+  transform: translateY(-1px);
+}
+
+.controlButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Speed Selector ─── */
+.speedSelector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1.5px solid rgba(26, 24, 21, 0.06);
+  margin-left: auto;
+}
+
+.speedPill {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.speedPill:hover {
+  background: #fff5ef;
+}
+
+.speedPillActive {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(255, 122, 89, 0.25);
+}
+
+.speedPillActive:hover {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+
+/* ─── Voice Selector ─── */
+.voiceSelector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1.5px solid rgba(26, 24, 21, 0.06);
+}
+
+.voiceLabel {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voiceSelect {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1.5px solid rgba(26, 24, 21, 0.08);
+  border-radius: 12px;
+  background: #fffcfa;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.voiceSelect:focus {
+  outline: none;
+  border-color: rgba(255, 168, 160, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 168, 160, 0.1);
+}
+
+/* ─── Waveform ─── */
+.waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 48px;
+  padding: 8px 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff0e7 0%, #ffe8db 100%);
+  overflow: hidden;
+}
+
+.waveBar {
+  width: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+  transition: height 0.15s ease;
+}
+
+.waveBarAnimated {
+  animation: waveAnim 1.2s ease-in-out infinite;
+}
+
+.waveBar:nth-child(1) { animation-delay: 0s; }
+.waveBar:nth-child(2) { animation-delay: 0.15s; }
+.waveBar:nth-child(3) { animation-delay: 0.3s; }
+.waveBar:nth-child(4) { animation-delay: 0.45s; }
+.waveBar:nth-child(5) { animation-delay: 0.6s; }
+.waveBar:nth-child(6) { animation-delay: 0.75s; }
+.waveBar:nth-child(7) { animation-delay: 0.9s; }
+
+@keyframes waveAnim {
+  0%, 100% { height: 8px; opacity: 0.5; }
+  50% { height: 36px; opacity: 1; }
+}
+
+.waveBarIdle {
+  height: 12px;
+  opacity: 0.3;
+}
+
+/* ─── Text Display ─── */
+.textDisplay {
+  padding: 22px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #fff 0%, #fffcfa 100%);
+  border: 1.5px solid rgba(26, 24, 21, 0.06);
+  box-shadow: 0 4px 16px rgba(100, 80, 70, 0.04);
+  min-height: 120px;
+  line-height: 2;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.textDisplayHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.textDisplayContent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  line-height: 2.2;
+}
+
+.textDisplayLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.textWords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  line-height: 2.2;
+}
+
+.word {
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.wordHighlight {
+  background: linear-gradient(135deg, #fff8d6 0%, #fff0b3 100%);
+  color: #5a4a00;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 2px 6px;
+  box-shadow: 0 2px 8px rgba(200, 170, 0, 0.15);
+  transform: scale(1.05);
+}
+
+.emptyDisplay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.emptyDisplayIcon {
+  font-size: 2.5rem;
+  opacity: 0.6;
+}
+
+/* ─── Tip Card ─── */
+.tipCard {
+  padding: 20px 24px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f0ff 100%);
+  border: 1.5px solid rgba(181, 200, 255, 0.3);
+  margin-top: 8px;
+}
+
+.tipTitle {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tipList {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+/* ─── Section Layout ─── */
+.controlsSection {
+  display: grid;
+  gap: 14px;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 900px) {
+  .playerControls {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .speedSelector {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .playButton {
+    width: 52px;
+    height: 52px;
+    font-size: 1.3rem;
+  }
+
+  .playerControls {
+    padding: 14px 16px;
+    border-radius: 18px;
+  }
+
+  .speedPill {
+    padding: 7px 10px;
+    font-size: 0.78rem;
+  }
+
+  .textInput {
+    min-height: 160px;
+    padding: 16px;
+    font-size: 0.95rem;
+  }
+
+  .textDisplay {
+    padding: 16px;
+    font-size: 0.95rem;
+  }
+
+  .tipCard {
+    padding: 14px 16px;
+  }
+}

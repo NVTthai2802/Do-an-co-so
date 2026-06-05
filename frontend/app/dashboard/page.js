@@ -289,9 +289,21 @@ function DashboardHome({ user, onLogout }) {
           />
           <LessonLink
             href="/dashboard/document"
-            icon="📄"
-            title="Quét tài liệu"
-            text="Chuyển tài liệu thành văn bản."
+            icon="📖"
+            title="Đọc tài liệu"
+            text="Tải ảnh, PDF, Word để AI trích xuất văn bản."
+          />
+          <LessonLink
+            href="/dashboard/tts"
+            icon="🔊"
+            title="AI đọc cho bé"
+            text="Dán văn bản để AI đọc thành tiếng cho bé nghe."
+          />
+          <LessonLink
+            href="/dashboard/stt"
+            icon="🎤"
+            title="Bé luyện đọc"
+            text="Đọc bài cho AI nghe và nhận đánh giá chính xác."
           />
         </div>
       </section>
@@ -906,7 +918,7 @@ function LetterLesson() {
 
   function selectLetter(item) {
     setSelectedLetter(item);
-    speakVietnamese(`${item.label} như ${item.word}`);
+    speakVietnamese(item.sound);
   }
 
   return (
@@ -929,14 +941,16 @@ function LetterLesson() {
           <strong>{selectedLetter.icon}</strong>
         </div>
         <p>
-          {selectedLetter.label} như <strong>{selectedLetter.word}</strong>
+          Từ ví dụ: <strong>{selectedLetter.word}</strong>
         </p>
-        <button
-          className="btn primary compact"
-          onClick={() => speakVietnamese(`${selectedLetter.label} như ${selectedLetter.word}`)}
-        >
-          Nghe phát âm
-        </button>
+        <div className="voice-actions">
+          <button className="btn primary compact" onClick={() => speakVietnamese(selectedLetter.sound)}>
+            Nghe chữ
+          </button>
+          <button className="btn secondary compact" onClick={() => speakVietnamese(selectedLetter.word)}>
+            Nghe từ
+          </button>
+        </div>
       </div>
     </section>
   );

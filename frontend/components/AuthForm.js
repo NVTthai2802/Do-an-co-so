@@ -4,7 +4,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { request } from "../lib/api";
-import { saveSession, saveVerificationSession } from "../lib/auth";
+import { saveSession } from "../lib/auth";
+
+function validatePasswordStrength(password) {
+  if (password.length < 10) {
+    return "Mat khau phai co it nhat 10 ky tu.";
+  }
+  if (!/[a-z]/.test(password)) {
+    return "Mat khau phai co chu thuong.";
+  }
+  if (!/[A-Z]/.test(password)) {
+    return "Mat khau phai co chu hoa.";
+  }
+  if (!/\d/.test(password)) {
+    return "Mat khau phai co so.";
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return "Mat khau phai co ky tu dac biet.";
+  }
+  if (/\s/.test(password)) {
+    return "Mat khau khong duoc chua khoang trang.";
+  }
+
+  return "";
+}
 
 export default function AuthForm({ mode, resetSuccess = false }) {
   const router = useRouter();
@@ -19,32 +42,8 @@ export default function AuthForm({ mode, resetSuccess = false }) {
   const [error, setError] = useState("");
   const title = isRegister ? "Dang ky tai khoan" : "Dang nhap";
   const subtitle = isRegister
-    ? "Tao tai khoan voi xac minh OTP qua email."
+    ? "Tao tai khoan voi mat khau manh hon."
     : "Chao mung ban quay lai voi KidLearn.";
-
-  function goToVerify(data) {
-    const developmentOtp = data.development_otp || data.code || "";
-    saveVerificationSession({
-      token: data.verification_token,
-      email: data.email || form.email,
-      resendAfterSeconds: data.resend_after_seconds || 60,
-      otpExpiresInSeconds: data.otp_expires_in_seconds || 600,
-      code: developmentOtp,
-    });
-    const params = new URLSearchParams();
-    params.set("token", data.verification_token);
-    params.set("email", data.email || form.email);
-    if (developmentOtp) {
-      params.set("code", developmentOtp);
-    }
-    if (data.resend_after_seconds) {
-      params.set("resend_after_seconds", String(data.resend_after_seconds));
-    }
-    if (data.otp_expires_in_seconds) {
-      params.set("otp_expires_in_seconds", String(data.otp_expires_in_seconds));
-    }
-    router.push(`/verify-otp?${params.toString()}`);
-  }
 
   async function handleRegister(event) {
     event.preventDefault();
@@ -53,6 +52,13 @@ export default function AuthForm({ mode, resetSuccess = false }) {
 
     if (form.password !== form.confirmPassword) {
       setError("Mat khau xac nhan khong khop.");
+      setLoading(false);
+      return;
+    }
+
+    const passwordError = validatePasswordStrength(form.password);
+    if (passwordError) {
+      setError(passwordError);
       setLoading(false);
       return;
     }
@@ -67,7 +73,8 @@ export default function AuthForm({ mode, resetSuccess = false }) {
           confirm_password: form.confirmPassword,
         },
       });
-      goToVerify(data);
+      saveSession(data.access_token, data.user);
+      router.push("/dashboard");
     } catch (err) {
       setError(err.message || "Khong the xu ly yeu cau.");
     } finally {
@@ -88,11 +95,6 @@ export default function AuthForm({ mode, resetSuccess = false }) {
           password: form.password,
         },
       });
-
-      if (data.requires_verification) {
-        goToVerify(data);
-        return;
-      }
 
       saveSession(data.access_token, data.user);
       router.push("/dashboard");
@@ -152,9 +154,22 @@ export default function AuthForm({ mode, resetSuccess = false }) {
                 }))
               }
               placeholder={isRegister ? "It nhat 8 ky tu" : "Nhap mat khau"}
+              autoComplete={isRegister ? "new-password" : "current-password"}
               required
             />
           </label>
+
+          {isRegister ? (
+            <div className="password-rules">
+              <span>Mat khau can co:</span>
+              <ul>
+                <li>It nhat 10 ky tu</li>
+                <li>Chu thuong va chu hoa</li>
+                <li>So va ky tu dac biet</li>
+                <li>Khong co khoang trang</li>
+              </ul>
+            </div>
+          ) : null}
 
           {isRegister ? (
             <label className="field">
@@ -166,9 +181,10 @@ export default function AuthForm({ mode, resetSuccess = false }) {
                   setForm((current) => ({
                     ...current,
                     confirmPassword: event.target.value,
-                  }))
+                }))
                 }
                 placeholder="Nhap lai mat khau"
+                autoComplete="new-password"
                 required
               />
             </label>

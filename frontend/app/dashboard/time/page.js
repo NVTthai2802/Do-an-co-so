@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import CompactNumberPicker from "../../../components/CompactNumberPicker";
 import LessonNav from "../../../components/LessonNav";
+import { recordLearningResult } from "../../../lib/learning";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./TimeLesson.module.css";
 
@@ -107,6 +108,21 @@ export default function TimeLesson() {
     if (selectedHour === guess.hour && selectedMinute === guess.minute) {
       setFeedback("Chính xác! Sang câu mới...");
       speakVietnamese(`Đúng rồi, ${guess.hour} giờ ${guess.minute} phút`);
+      void recordLearningResult({
+        module_key: "time",
+        activity_key: "clock_guess",
+        title: `Đoán giờ: ${guess.hour}:${String(guess.minute).padStart(2, "0")}`,
+        score: 100,
+        max_score: 100,
+        accuracy: 100,
+        time_spent_seconds: 0,
+        detail: {
+          mode: "guess",
+          target_hour: guess.hour,
+          target_minute: guess.minute,
+          correct: true,
+        },
+      });
       nextTimerRef.current = setTimeout(nextGuess, 1500);
       return;
     }

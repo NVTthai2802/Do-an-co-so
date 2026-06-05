@@ -34,7 +34,12 @@ export function getStoredUser() {
   }
 
   const value = window.localStorage.getItem(USER_KEY);
-  return value ? JSON.parse(value) : null;
+  try {
+    return value ? JSON.parse(value) : null;
+  } catch {
+    window.localStorage.removeItem(USER_KEY);
+    return null;
+  }
 }
 
 export function saveVerificationSession({

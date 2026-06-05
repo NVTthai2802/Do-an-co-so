@@ -10,7 +10,11 @@ from datetime import datetime, timezone
 from .models import User, Child, Lesson, Progress, Score, LessonType
 from .schemas import UserRegister, ChildCreate, ScoreCreate
 
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_ctx = CryptContext(
+    schemes=["pbkdf2_sha256", "bcrypt"],
+    default="pbkdf2_sha256",
+    deprecated="auto",
+)
 
 
 # ─── USER ───────────────────────────────────────

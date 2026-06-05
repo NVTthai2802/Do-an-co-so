@@ -1,5 +1,6 @@
 const TOKEN_KEY = "kidlearn_token";
 const USER_KEY = "kidlearn_user";
+const VERIFICATION_KEY = "kidlearn_verification";
 
 export function saveSession(token, user) {
   if (typeof window === "undefined") {
@@ -34,5 +35,54 @@ export function getStoredUser() {
 
   const value = window.localStorage.getItem(USER_KEY);
   return value ? JSON.parse(value) : null;
+}
+
+export function saveVerificationSession({
+  token,
+  email,
+  resendAfterSeconds = 60,
+  otpExpiresInSeconds = 600,
+  code = "",
+}) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem(
+    VERIFICATION_KEY,
+    JSON.stringify({
+      token,
+      email,
+      code,
+      resendAvailableAt: Date.now() + resendAfterSeconds * 1000,
+      otpExpiresAt: Date.now() + otpExpiresInSeconds * 1000,
+    })
+  );
+}
+
+export function getVerificationSession() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.sessionStorage.getItem(VERIFICATION_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    window.sessionStorage.removeItem(VERIFICATION_KEY);
+    return null;
+  }
+}
+
+export function clearVerificationSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.removeItem(VERIFICATION_KEY);
 }
 

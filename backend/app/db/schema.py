@@ -65,12 +65,28 @@ def initialize_schema(conn):
             name TEXT NOT NULL,
             email TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
+            is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+            verification_token_hash TEXT,
+            verification_token_expires_at TIMESTAMPTZ,
+            verification_code_hash TEXT,
+            verification_code_expires_at TIMESTAMPTZ,
+            verification_code_sent_at TIMESTAMPTZ,
+            verification_attempts INTEGER NOT NULL DEFAULT 0,
+            verification_locked_until TIMESTAMPTZ,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     """)
     conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT")
     conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT")
     conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT")
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE")
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_hash TEXT")
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires_at TIMESTAMPTZ")
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code_hash TEXT")
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code_expires_at TIMESTAMPTZ")
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code_sent_at TIMESTAMPTZ")
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_attempts INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_locked_until TIMESTAMPTZ")
     conn.execute("""
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -122,4 +138,58 @@ def initialize_schema(conn):
         "token",
         "WHERE token IS NOT NULL",
     )
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS auth_throttles (
+            scope TEXT NOT NULL,
+            identifier TEXT NOT NULL,
+            failure_count INTEGER NOT NULL DEFAULT 0,
+            locked_until TIMESTAMPTZ,
+            last_failure_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (scope, identifier)
+        )
+    """)
+    conn.execute("ALTER TABLE auth_throttles ADD COLUMN IF NOT EXISTS scope TEXT")
+    conn.execute("ALTER TABLE auth_throttles ADD COLUMN IF NOT EXISTS identifier TEXT")
+    conn.execute("ALTER TABLE auth_throttles ADD COLUMN IF NOT EXISTS failure_count INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE auth_throttles ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ")
+    conn.execute("ALTER TABLE auth_throttles ADD COLUMN IF NOT EXISTS last_failure_at TIMESTAMPTZ")
+    conn.execute("ALTER TABLE auth_throttles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()")
+    conn.execute("ALTER TABLE auth_throttles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()")
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS auth_throttles_scope_identifier_unique_idx
+        ON auth_throttles (scope, identifier)
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            token_hash TEXT PRIMARY KEY,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
+    conn.execute("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS token_hash TEXT")
+    conn.execute("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS user_id BIGINT")
+    conn.execute("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW()")
+    conn.execute("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS used_at TIMESTAMPTZ")
+    conn.execute("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()")
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS password_reset_tokens_user_id_idx
+        ON password_reset_tokens (user_id)
+    """)
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS password_reset_tokens_one_active_idx
+        ON password_reset_tokens (user_id)
+        WHERE used_at IS NULL
+    """)
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS users_verification_token_hash_idx
+        ON users (verification_token_hash)
+        WHERE verification_token_hash IS NOT NULL
+    """)
+
     conn.commit()

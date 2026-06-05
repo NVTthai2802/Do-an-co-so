@@ -75,6 +75,21 @@ Nếu form báo `Không kết nối được database Postgres`, kiểm tra tron
 - Không đặt `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kidlearn` cho Production/Preview. `localhost` trên Vercel là server của Vercel, không phải máy tính của bạn.
 - Nên dùng `POSTGRES_URL` từ Vercel Storage/Postgres, hoặc `DATABASE_URL` từ Neon/Supabase/cloud Postgres.
 - URL cloud nên có SSL, ví dụ `?sslmode=require`. Với Neon, không dùng `sslmode=req`.
+
+### Bảo mật tài khoản bằng OTP email
+
+Luồng đăng ký hiện tại dùng OTP gửi email trước khi cho đăng nhập.
+
+Thêm các biến môi trường sau trong Vercel Project Settings:
+
+- `SMTP_HOST`
+- `SMTP_PORT` mặc định `587`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_FROM` nếu muốn địa chỉ gửi khác `SMTP_USER`
+- `SMTP_USE_TLS` mặc định `1`
+
+Nếu chưa cấu hình SMTP, backend vẫn tạo tài khoản nhưng không gửi được OTP. Muốn bật bảo mật đầy đủ, phải cấu hình SMTP hợp lệ.
 - Sau khi sửa Environment Variables, bấm Redeploy để backend nhận cấu hình mới.
 
 ## Tính năng AI nhận diện số
@@ -92,3 +107,26 @@ py main.py
 ```
 
 Nếu chưa có `backend/app/ml/artifacts/best.onnx` hoặc chưa cài dependency trong `requirements.txt`, app vẫn chạy; phần camera sẽ báo model chưa sẵn sàng.
+
+## Auth hardening
+
+- Registration now requires `confirm_password`.
+- Login is rate-limited by email and IP with temporary lockouts after repeated failures.
+- OTP resend has a cooldown so one account cannot spam mail.
+- For email delivery on Vercel, prefer `EMAIL_PROVIDER=resend` with:
+  - `RESEND_API_KEY`
+  - `RESEND_FROM`
+- SMTP still works with:
+  - `SMTP_HOST`
+  - `SMTP_PORT`
+  - `SMTP_USER`
+  - `SMTP_PASSWORD`
+  - `SMTP_FROM`
+  - `SMTP_USE_TLS`
+
+### Auth routes
+
+- `/verify-otp` is the dedicated OTP screen.
+- `/forgot-password` sends a reset link by email.
+- `/reset-password` accepts the one-time reset token from the email.
+- Set `APP_URL` or `FRONTEND_URL` in Vercel so backend email links point to the deployed site.

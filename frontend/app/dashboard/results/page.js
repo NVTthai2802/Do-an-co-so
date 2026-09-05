@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import LessonNav from "../../../components/LessonNav";
+import ParentNav from "../../../components/ParentNav";
 import { clearSession, getToken, saveSession } from "../../../lib/auth";
 import { request } from "../../../lib/api";
 import styles from "./Results.module.css";
@@ -338,7 +338,7 @@ export default function LearningResultsDashboard() {
   return (
     <main className={`dashboard-shell ${styles.pageShell}`}>
       <nav className={styles.navBar}>
-        <LessonNav />
+        <ParentNav />
         <Link href="/dashboard" className={styles.navBack}>
           ← Quay lại
         </Link>

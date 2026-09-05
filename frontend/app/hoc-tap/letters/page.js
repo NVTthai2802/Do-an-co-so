@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import LetterFlashcard from "../../../components/LetterFlashcard";
-import LessonNav from "../../../components/LessonNav";
+import KidNav from "../../../components/KidNav";
 import { recordLearningResult } from "../../../lib/learning";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./HocChu.module.css";
@@ -102,8 +102,8 @@ export default function HocChu() {
             <p>Nhìn, nghe và lật thẻ để ghi nhớ từng chữ cái tiếng Việt.</p>
           </div>
           <div className="dashboard-actions">
-            <LessonNav />
-            <Link href="/dashboard" className="btn secondary">
+            <KidNav />
+            <Link href="/hoc-tap" className="btn secondary">
               Quay lại
             </Link>
           </div>

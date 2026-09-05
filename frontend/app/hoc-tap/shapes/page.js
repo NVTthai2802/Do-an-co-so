@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import AirDrawActivity from "../../../components/AirDrawActivity";
-import LessonNav from "../../../components/LessonNav";
+import KidNav from "../../../components/KidNav";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./HocHinh.module.css";
 
@@ -270,8 +270,8 @@ export default function HocHinh() {
             <h1>Học Hình Dạng</h1>
           </div>
           <div className="dashboard-actions">
-            <LessonNav />
-            <Link href="/dashboard" className="btn secondary">
+            <KidNav />
+            <Link href="/hoc-tap" className="btn secondary">
               Quay lại
             </Link>
           </div>

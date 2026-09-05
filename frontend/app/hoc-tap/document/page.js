@@ -166,7 +166,7 @@ export default function DocumentScanner() {
           </div>
           <button
             className="btn secondary"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push("/hoc-tap")}
           >
             ← Quay lại
           </button>

@@ -34,7 +34,9 @@ export async function request(path, { method = "GET", body, token } = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.detail || data.message || "Da xay ra loi.");
+    const error = new Error(data.detail || data.message || "Da xay ra loi.");
+    error.status = response.status;
+    throw error;
   }
 
   return data;

@@ -2,7 +2,12 @@ function normalizeApiUrl(value) {
   return value ? value.replace(/\/+$/, "") : "";
 }
 
-const envApiUrl = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
+// Vercel tự cấp NEXT_PUBLIC_BACKEND_URL cho service "backend" khai báo
+// trong vercel.json (xem docs.vercel.com/docs/services/experimental).
+// NEXT_PUBLIC_API_URL được giữ lại làm giá trị override / chạy local.
+const envApiUrl =
+  normalizeApiUrl(process.env.NEXT_PUBLIC_BACKEND_URL) ||
+  normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
 const DEFAULT_API_URL = "http://localhost:8000";
 
 export function getApiUrl() {

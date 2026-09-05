@@ -405,77 +405,21 @@ function NumberReadingMode() {
   function selectDigit(number) {
     setSelectedDigit(number);
     speakNumber(number);
-    void recordLearningResult({
-      module_key: "numbers",
-      activity_key: "digit_explore",
-      title: `Khám phá số ${number}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        mode: "digits",
-        number,
-      },
-    });
   }
 
   function selectTen(number) {
     setSelectedTen(number);
     speakNumber(number);
-    void recordLearningResult({
-      module_key: "numbers",
-      activity_key: "tens_explore",
-      title: `Khám phá số ${number}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        mode: "tens",
-        number,
-      },
-    });
   }
 
   function selectBase(number) {
     setSelectedBase(number);
     speakNumber(number + selectedUnit);
-    void recordLearningResult({
-      module_key: "numbers",
-      activity_key: "compose_base",
-      title: `Ghép số ${number + selectedUnit}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        mode: "compose",
-        base: number,
-        unit: selectedUnit,
-        result: number + selectedUnit,
-      },
-    });
   }
 
   function selectUnit(number) {
     setSelectedUnit(number);
     speakNumber(selectedBase + number);
-    void recordLearningResult({
-      module_key: "numbers",
-      activity_key: "compose_unit",
-      title: `Ghép số ${selectedBase + number}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        mode: "compose",
-        base: selectedBase,
-        unit: number,
-        result: selectedBase + number,
-      },
-    });
   }
 
   return (

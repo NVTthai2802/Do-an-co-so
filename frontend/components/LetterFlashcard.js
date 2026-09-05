@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { speakVietnamese } from "../lib/speech";
-import { recordLearningResult } from "../lib/learning";
 import styles from "../app/hoc-tap/letters/HocChu.module.css";
 
 function wrapIndex(index, total) {
@@ -45,25 +44,6 @@ export default function LetterFlashcard({ items = [], initialLetter = "" }) {
   }
 
   const current = items[currentIndex] || items[0];
-
-  useEffect(() => {
-    void recordLearningResult({
-      module_key: "letters",
-      activity_key: "flashcard_view",
-      title: `Flashcard chữ ${current.letter}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        letter: current.letter,
-        word: current.word || "",
-        example: current.example || "",
-        index: currentIndex,
-        total: items.length,
-      },
-    });
-  }, [currentIndex, current.letter, current.example, current.word, items.length]);
 
   const goToIndex = (nextIndex) => {
     setCurrentIndex(wrapIndex(nextIndex, items.length));

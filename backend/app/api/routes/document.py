@@ -8,10 +8,7 @@ from fastapi import APIRouter, File, Header, HTTPException, UploadFile
 from app.db.connection import get_db
 from app.schemas.learning import DocumentSummaryReq
 from app.services.document_processor import process_document
-from app.services.learning_results import (
-    record_document_summary,
-    record_learning_result,
-)
+from app.services.learning_results import record_document_summary
 from app.services.session_auth import get_session_user
 from app.services.summarizer import summarize_text
 
@@ -152,26 +149,7 @@ def summarize_document(
                 original_length=summary["original_length"],
                 summary_length=summary["summary_length"],
             )
-            learning_result = record_learning_result(
-                conn,
-                user["id"],
-                module_key="document",
-                activity_key="ocr_summary",
-                title="Tom tat van ban OCR",
-                score=100 if summary["summary"] else 0,
-                max_score=100,
-                accuracy=None,
-                time_spent_seconds=0,
-                detail={
-                    "source_name": req.source_name or "",
-                    "source_type": req.source_type,
-                    "sentence_count": summary["sentence_count"],
-                    "original_length": summary["original_length"],
-                    "summary_length": summary["summary_length"],
-                },
-            )
             response["document_summary"] = document_summary
-            response["learning_result"] = learning_result
 
     return response
 

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import LetterFlashcard from "../../../components/LetterFlashcard";
 import KidNav from "../../../components/KidNav";
-import { recordLearningResult } from "../../../lib/learning";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./HocChu.module.css";
 
@@ -51,21 +50,6 @@ export default function HocChu() {
   const selectLetter = (letter) => {
     if (letter.letter === selectedLetter.letter) {
       speakLetter(letter);
-      void recordLearningResult({
-        module_key: "letters",
-        activity_key: "letter_explore",
-        title: `Khám phá chữ ${letter.letter}`,
-        score: 85,
-        max_score: 100,
-        accuracy: 85,
-        time_spent_seconds: 0,
-        detail: {
-          letter: letter.letter,
-          word: letter.word,
-          example: letter.example,
-          tab: activeTab,
-        },
-      });
       return;
     }
 
@@ -74,21 +58,6 @@ export default function HocChu() {
       setSelectedLetter(letter);
       setIsAnimating(false);
       speakLetter(letter);
-      void recordLearningResult({
-        module_key: "letters",
-        activity_key: "letter_explore",
-        title: `Khám phá chữ ${letter.letter}`,
-        score: 85,
-        max_score: 100,
-        accuracy: 85,
-        time_spent_seconds: 0,
-        detail: {
-          letter: letter.letter,
-          word: letter.word,
-          example: letter.example,
-          tab: activeTab,
-        },
-      });
     }, 180);
   };
 

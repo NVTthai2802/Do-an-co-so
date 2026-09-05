@@ -10,8 +10,17 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from app.core.config import get_app_base_url
 from app.core.security import hash_password, verify_password
 from app.db.connection import get_db
-from app.schemas.auth import ForgotPasswordReq, LoginReq, RegisterReq, ResetPasswordReq
+from app.schemas.auth import (
+    ForgotPasswordReq,
+    LoginReq,
+    RegisterReq,
+    ResetPasswordReq,
+    VerifyPasswordReq,
+)
 from app.services.auth_security import (
+    PARENTAL_GATE_LIMIT,
+    PARENTAL_GATE_LOCK_MINUTES,
+    PARENTAL_GATE_SCOPE,
     RESET_SCOPE_EMAIL,
     RESET_SCOPE_IP,
     RESET_REQUEST_LIMIT,
@@ -305,6 +314,46 @@ def get_me(authorization: Optional[str] = Header(None)):
     with get_db() as conn:
         _, user = _get_session_user(conn, authorization)
         return {"user": public_user(user)}
+
+
+@router.post("/verify-password")
+def verify_password_endpoint(req: VerifyPasswordReq, authorization: Optional[str] = Header(None)):
+    """Re-check the current user's password without issuing a new session.
+
+    Used by the Parental Gate on /hoc-tap so a child cannot switch back to the
+    parent dashboard without a grown-up re-entering the account password.
+    """
+    with get_db() as conn:
+        _, user = _get_session_user(conn, authorization)
+        identifier = str(user["id"])
+
+        assert_throttle_not_locked(
+            conn,
+            PARENTAL_GATE_SCOPE,
+            identifier,
+            "Ban da nhap sai qua nhieu lan. Hay thu lai sau 30 giay.",
+        )
+
+        password_hash = user.get("password_hash")
+        if not password_hash or not verify_password(req.password, password_hash):
+            lock_triggered = record_throttle_failure(
+                conn,
+                PARENTAL_GATE_SCOPE,
+                identifier,
+                PARENTAL_GATE_LIMIT,
+                PARENTAL_GATE_LOCK_MINUTES,
+            )
+            raise HTTPException(
+                status_code=429 if lock_triggered else 400,
+                detail=(
+                    "Ban da nhap sai qua nhieu lan. Hay thu lai sau 30 giay."
+                    if lock_triggered
+                    else "Mat khau khong dung."
+                ),
+            )
+
+        clear_throttle(conn, PARENTAL_GATE_SCOPE, identifier)
+        return {"message": "Xac thuc thanh cong."}
 
 
 @router.post("/logout")

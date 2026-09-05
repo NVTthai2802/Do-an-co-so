@@ -21,3 +21,7 @@ class ResetPasswordReq(BaseModel):
     token: str
     password: str
     confirm_password: str
+
+
+class VerifyPasswordReq(BaseModel):
+    password: str

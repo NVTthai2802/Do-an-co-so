@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import CompactNumberPicker from "../../../components/CompactNumberPicker";
-import LessonNav from "../../../components/LessonNav";
+import KidNav from "../../../components/KidNav";
 import { recordLearningResult } from "../../../lib/learning";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./TimeLesson.module.css";
@@ -141,8 +141,8 @@ export default function TimeLesson() {
             <p>Học giờ cơ bản, phút cơ bản và luyện đoán giờ kèm phút.</p>
           </div>
           <div className="dashboard-actions">
-            <LessonNav />
-            <Link href="/dashboard" className="btn secondary">
+            <KidNav />
+            <Link href="/hoc-tap" className="btn secondary">
               Quay lại
             </Link>
           </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { speakVietnamese } from "../lib/speech";
 import { recordLearningResult } from "../lib/learning";
-import styles from "../app/dashboard/letters/HocChu.module.css";
+import styles from "../app/hoc-tap/letters/HocChu.module.css";
 
 function wrapIndex(index, total) {
   if (total <= 0) {

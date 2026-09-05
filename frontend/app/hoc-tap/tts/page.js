@@ -144,7 +144,7 @@ export default function TextToSpeech() {
           </div>
           <button
             className="btn secondary"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push("/hoc-tap")}
           >
             ← Quay lại
           </button>

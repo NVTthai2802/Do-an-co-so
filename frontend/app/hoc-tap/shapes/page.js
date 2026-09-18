@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import AirDrawActivity from "../../../components/AirDrawActivity";
-import KidNav from "../../../components/KidNav";
+import KidTopBar from "../../../components/KidTopBar";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./HocHinh.module.css";
 
@@ -262,20 +261,9 @@ export default function HocHinh() {
   };
 
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">Dạy hình</span>
-            <h1>Học Hình Dạng</h1>
-          </div>
-          <div className="dashboard-actions">
-            <KidNav />
-            <Link href="/hoc-tap" className="btn secondary">
-              Quay lại
-            </Link>
-          </div>
-        </div>
+    <main className="kid-shell">
+      <KidTopBar subject="shp" title="Hình" />
+      <div className="kid-lesson subject-shp">
 
         <div className={styles.lessonContent}>
       <h1 className={styles.title}>🔷 Học Hình Dạng</h1>
@@ -349,7 +337,7 @@ export default function HocHinh() {
         />
       )}
         </div>
-      </section>
+      </div>
     </main>
   );
 }

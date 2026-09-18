@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import CompactNumberPicker from "../../../components/CompactNumberPicker";
-import KidNav from "../../../components/KidNav";
+import KidTopBar from "../../../components/KidTopBar";
 import { recordLearningResult } from "../../../lib/learning";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./TimeLesson.module.css";
@@ -132,21 +131,9 @@ export default function TimeLesson() {
   }
 
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">Dạy giờ</span>
-            <h1>Nhận diện đồng hồ</h1>
-            <p>Học giờ cơ bản, phút cơ bản và luyện đoán giờ kèm phút.</p>
-          </div>
-          <div className="dashboard-actions">
-            <KidNav />
-            <Link href="/hoc-tap" className="btn secondary">
-              Quay lại
-            </Link>
-          </div>
-        </div>
+    <main className="kid-shell">
+      <KidTopBar subject="tim" title="Giờ" />
+      <div className="kid-lesson subject-tim">
 
         <div className="mode-tabs secondary-tabs" role="tablist" aria-label="Phần học đồng hồ">
           <button
@@ -260,7 +247,7 @@ export default function TimeLesson() {
             </div>
           </section>
         ) : null}
-      </section>
+      </div>
     </main>
   );
 }

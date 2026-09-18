@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import LetterFlashcard from "../../../components/LetterFlashcard";
-import KidNav from "../../../components/KidNav";
+import KidTopBar from "../../../components/KidTopBar";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./HocChu.module.css";
 
@@ -62,21 +61,9 @@ export default function HocChu() {
   };
 
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">Dạy chữ</span>
-            <h1>Học chữ cái</h1>
-            <p>Nhìn, nghe và lật thẻ để ghi nhớ từng chữ cái tiếng Việt.</p>
-          </div>
-          <div className="dashboard-actions">
-            <KidNav />
-            <Link href="/hoc-tap" className="btn secondary">
-              Quay lại
-            </Link>
-          </div>
-        </div>
+    <main className="kid-shell">
+      <KidTopBar subject="let" title="Chữ" />
+      <div className="kid-lesson subject-let">
 
         <div className={styles.lessonContent}>
           <h1 className={styles.title}>🔤 Học chữ cái</h1>
@@ -138,7 +125,7 @@ export default function HocChu() {
             <LetterFlashcard items={LETTER_ITEMS} initialLetter={selectedLetter.letter} />
           )}
         </div>
-      </section>
+      </div>
     </main>
   );
 }

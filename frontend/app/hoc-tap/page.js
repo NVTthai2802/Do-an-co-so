@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clearSession, getToken, saveSession } from "../../lib/auth";
 import { request } from "../../lib/api";
 import { recordLearningResult } from "../../lib/learning";
 import { speakVietnamese } from "../../lib/speech";
-import KidNav from "../../components/KidNav";
+import KidTopBar from "../../components/KidTopBar";
 import CompactNumberPicker from "../../components/CompactNumberPicker";
 import ParentalGate from "../../components/ParentalGate";
 
@@ -179,49 +178,58 @@ function createMathProblem(limit = 10) {
   return { left, right, operator: "-", answer: left - right };
 }
 
+const SLOW_NETWORK_MS = 8000;
+
 function HocTapContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lessonType = searchParams.get("lesson");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [slow, setSlow] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const token = useMemo(() => getToken(), []);
 
   useEffect(() => {
     if (!token) {
       router.replace("/login");
-      return;
+      return undefined;
     }
+
+    let alive = true;
+    setLoading(true);
+    setSlow(false);
+
+    // Mạng chậm: sau 8 giây thì báo cho phụ huynh và cho bấm "Thử lại".
+    const slowTimer = setTimeout(() => {
+      if (alive) setSlow(true);
+    }, SLOW_NETWORK_MS);
 
     request("/auth/me", { token })
       .then((data) => {
+        if (!alive) return;
         setUser(data.user);
         saveSession(token, data.user);
       })
       .catch(() => {
+        if (!alive) return;
         clearSession();
         router.replace("/login");
       })
-      .finally(() => setLoading(false));
-  }, [router, token]);
+      .finally(() => {
+        if (!alive) return;
+        clearTimeout(slowTimer);
+        setLoading(false);
+      });
 
-  async function handleLogout() {
-    try {
-      await request("/auth/logout", { method: "POST", token });
-    } catch {
-      // Local logout should still work if the server is temporarily unavailable.
-    } finally {
-      clearSession();
-      router.replace("/login");
-    }
-  }
+    return () => {
+      alive = false;
+      clearTimeout(slowTimer);
+    };
+  }, [router, token, attempt]);
 
   if (loading) {
-    return (
-      <main className="dashboard-shell">
-        <section className="dashboard-card">Đang mở lớp học...</section>
-      </main>
-    );
+    return <KidLoading slow={slow} onRetry={() => setAttempt((n) => n + 1)} />;
   }
 
   if (lessonType === "numbers") {
@@ -230,7 +238,7 @@ function HocTapContent() {
 
   if (lessonType === "letters") {
     return (
-      <LessonShell title="Dạy chữ" subtitle="Bảng chữ cái tiếng Việt">
+      <LessonShell title="Chữ" subject="let">
         <LetterLesson />
       </LessonShell>
     );
@@ -238,89 +246,89 @@ function HocTapContent() {
 
   if (lessonType === "shapes") {
     return (
-      <LessonShell title="Dạy hình" subtitle="Nhận dạng hình cơ bản">
+      <LessonShell title="Hình" subject="shp">
         <ShapeLesson />
       </LessonShell>
     );
   }
 
-  return <HocTapHome user={user} onLogout={handleLogout} />;
+  return <HocTapHome user={user} />;
 }
 
-function HocTapHome({ user, onLogout }) {
+function KidLoading({ slow, onRetry }) {
+  return (
+    <main className="kid-shell">
+      <div className="kid-skeleton">
+        <div className="kid-skeleton-mascot" aria-hidden="true">
+          ⭐
+        </div>
+        <p className="kid-skeleton-text" role="status">
+          Đang mở lớp học...
+        </p>
+
+        <div className="kid-skeleton-grid" aria-hidden="true">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="kid-skeleton-card" />
+          ))}
+        </div>
+
+        {slow ? (
+          <div className="kid-slow-note" role="alert">
+            <span>Mạng hơi chậm</span>
+            <button type="button" className="kbtn subject-try" onClick={onRetry}>
+              Thử lại
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </main>
+  );
+}
+
+// Lưới bài của bé (Mục 5.2): Số, Chữ, Hình, Giờ, Luyện đọc, Huy hiệu.
+// "Đọc tài liệu" và "AI đọc cho bé" đã chuyển sang /dashboard/tools.
+const kidLessons = [
+  { href: "/hoc-tap?lesson=numbers", subject: "num", icon: "123", name: "Số", speak: "Bài học số" },
+  { href: "/hoc-tap/letters", subject: "let", icon: "A", name: "Chữ", speak: "Bài học chữ" },
+  { href: "/hoc-tap/shapes", subject: "shp", icon: "▲", name: "Hình", speak: "Bài học hình" },
+  { href: "/hoc-tap/time", subject: "tim", icon: "🕐", name: "Giờ", speak: "Bài học giờ" },
+  { href: "/hoc-tap/stt", subject: "rd", icon: "🎤", name: "Luyện đọc", speak: "Bé luyện đọc" },
+];
+
+function HocTapHome({ user }) {
   const router = useRouter();
   const [gateOpen, setGateOpen] = useState(false);
 
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">Lớp học của bé</span>
-            <h1>Xin chào, {user?.name || "bé"}!</h1>
-            <p>Chọn một bài học để bắt đầu.</p>
-          </div>
-          <div className="dashboard-actions">
-            <button className="btn secondary" onClick={onLogout}>
-              Đăng xuất
-            </button>
-            <button
-              type="button"
-              className="gate-trigger"
-              onClick={() => setGateOpen(true)}
-              aria-label="Quay lại khu vực quản lý"
-              title="Quay lại khu vực quản lý"
-            >
-              🔒
-            </button>
-          </div>
-        </div>
+    <main className="kid-shell">
+      <div className="kid-home-head">
+        <h1>Chào {user?.name || "bé"}!</h1>
+        <button
+          type="button"
+          className="kid-lock"
+          onClick={() => setGateOpen(true)}
+          aria-label="Khu vực của bố mẹ"
+          title="Khu vực của bố mẹ"
+        >
+          🔒
+        </button>
+      </div>
 
-        <div className="lesson-grid">
-          <LessonLink
-            href="/hoc-tap?lesson=numbers"
-            icon="🔢"
-            title="Dạy số"
-            text="Nhận biết số 0-100, ghép số và luyện cộng trừ."
-          />
-          <LessonLink
-            href="/hoc-tap/letters"
-            icon="🔤"
-            title="Dạy chữ"
-            text="Làm quen 29 chữ cái tiếng Việt."
-          />
-          <LessonLink
-            href="/hoc-tap/shapes"
-            icon="◯"
-            title="Dạy hình"
-            text="Nhận biết hình tròn, vuông, tam giác."
-          />
-          <LessonLink
-            href="/hoc-tap/time"
-            icon="⏰"
-            title="Dạy giờ"
-            text="Nhận biết đồng hồ và luyện đoán giờ."
-          />
-          <LessonLink
-            href="/hoc-tap/document"
-            icon="📖"
-            title="Đọc tài liệu"
-            text="Tải ảnh, PDF, Word để AI trích xuất văn bản."
-          />
-          <LessonLink
-            href="/hoc-tap/tts"
-            icon="🔊"
-            title="AI đọc cho bé"
-            text="Dán văn bản để AI đọc thành tiếng cho bé nghe."
-          />
-          <LessonLink
-            href="/hoc-tap/stt"
-            icon="🎤"
-            title="Bé luyện đọc"
-            text="Đọc bài cho AI nghe và nhận đánh giá chính xác."
-          />
+      <div className="kid-grid">
+        {kidLessons.map((lesson) => (
+          <KidLessonCard key={lesson.href} {...lesson} />
+        ))}
+
+        {/* Phòng huy hiệu dựng ở Giai đoạn 6; hiện thẻ ở trạng thái chưa mở
+            để bé thấy trước phần thưởng mà không bấm vào link chưa có. */}
+        <div className="kid-card locked subject-num" aria-label="Huy hiệu, sắp có">
+          <div className="kid-card-icon" aria-hidden="true">
+            🏅
+          </div>
+          <p className="kid-card-name">Huy hiệu</p>
+          <span className="kid-card-soon">Sắp có</span>
         </div>
-      </section>
+      </div>
 
       {gateOpen ? (
         <ParentalGate
@@ -332,35 +340,56 @@ function HocTapHome({ user, onLogout }) {
   );
 }
 
-function LessonLink({ href, icon, title, text }) {
+function KidLessonCard({ href, subject, icon, name, speak }) {
+  const router = useRouter();
+  const [stars] = useState(0);
+
   return (
-    <Link href={href} className="lesson-card">
-      <div className="lesson-icon">{icon}</div>
-      <h2>{title}</h2>
-      <p>{text}</p>
-      <div className="lesson-cta">Vào học →</div>
-    </Link>
+    <div
+      className={`kid-card subject-${subject}`}
+      role="link"
+      tabIndex={0}
+      onClick={() => router.push(href)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          router.push(href);
+        }
+      }}
+    >
+      <div className="kid-card-icon" aria-hidden="true">
+        {icon}
+      </div>
+      <p className="kid-card-name">{name}</p>
+
+      <div className="kid-card-stars" aria-label={`${stars} trên 3 sao`}>
+        {[0, 1, 2].map((index) => (
+          <i key={index} className={index < stars ? "on" : ""} aria-hidden="true">
+            ⭐
+          </i>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className="kid-card-speak"
+        aria-label={`Nghe đọc: ${name}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          speakVietnamese(speak);
+        }}
+      >
+        🔊
+      </button>
+    </div>
   );
 }
 
-function LessonShell({ title, subtitle, children }) {
+function LessonShell({ title, subject = "num", children }) {
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">{title}</span>
-            <h1>{subtitle}</h1>
-          </div>
-          <div className="dashboard-actions">
-            <KidNav />
-            <Link href="/hoc-tap" className="btn secondary">
-              Quay lại
-            </Link>
-          </div>
-        </div>
-        {children}
-      </section>
+    <main className="kid-shell">
+      <KidTopBar subject={subject} title={title} />
+      <div className={`kid-lesson subject-${subject}`}>{children}</div>
     </main>
   );
 }
@@ -369,7 +398,7 @@ function NumberLesson() {
   const [mode, setMode] = useState("learn");
 
   return (
-    <LessonShell title="Dạy số" subtitle="Số và toán học vui nhộn">
+    <LessonShell title="Số" subject="num">
       <div className="mode-tabs" role="tablist" aria-label="Chế độ học số">
         <button
           className={`mode-tab ${mode === "learn" ? "active" : ""}`}

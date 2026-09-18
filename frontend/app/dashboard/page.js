@@ -60,7 +60,7 @@ export default function ParentDashboardPage() {
           </div>
           <div className="dashboard-actions">
             <Link href="/hoc-tap" className="btn primary">
-              Chuyển sang giao diện học tập
+              Vào lớp học của bé
             </Link>
             <button className="btn secondary" onClick={handleLogout}>
               Đăng xuất
@@ -74,6 +74,13 @@ export default function ParentDashboardPage() {
             <h2>Kết quả học tập</h2>
             <p>Xem tiến độ, kỹ năng, chuỗi học tập và gợi ý AI cho phụ huynh.</p>
             <div className="lesson-cta">Xem báo cáo →</div>
+          </Link>
+
+          <Link href="/dashboard/tools" className="lesson-card">
+            <div className="lesson-icon">🧰</div>
+            <h2>Công cụ cho bé</h2>
+            <p>Chọn bài đọc hôm nay, trích xuất văn bản từ tài liệu và nghe AI đọc thử.</p>
+            <div className="lesson-cta">Mở công cụ →</div>
           </Link>
         </div>
       </section>

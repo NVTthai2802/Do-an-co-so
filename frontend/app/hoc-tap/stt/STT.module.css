@@ -221,9 +221,36 @@
 }
 
 .referenceHint {
-  font-size: 0.78rem;
-  color: var(--muted, #9b8f8a);
-  font-weight: 400;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--rd-700);
+  color: var(--ink);
+  font: 700 0.9rem/1 var(--font-body);
+  cursor: pointer;
+}
+
+.referenceHint:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--rd-700);
+}
+
+.referenceHint:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Be chi doc, khong go: hien doan van co lon, de doc */
+.referenceText {
+  margin: 0;
+  padding: 18px 20px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--rd-400);
+  color: var(--ink);
+  font: 700 clamp(1.25rem, 3.6vw, 1.7rem) / 1.6 var(--font-display);
 }
 
 .referenceTextarea {

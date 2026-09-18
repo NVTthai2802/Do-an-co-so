@@ -188,6 +188,370 @@ a {
   --c700: var(--try-700);
 }
 
+/* ═══ GIAI DOAN 2 – Khung cua be ══════════════════════════════
+   Thanh tren cung (Muc 4.3), luoi the bai hoc (Muc 5.2) va
+   khung skeleton khi dang tai.                                   */
+
+.kid-shell {
+  width: min(1100px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 12px 0 48px;
+}
+
+/* ── Thanh tren cung: CHI MOT hang, cao 56–64px ──────────────── */
+.kid-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  margin-bottom: var(--space-5);
+}
+
+/* Muc 4.3 gioi han thanh nay cao 56–64px, con nghiem thu Giai doan 2 doi
+   vung cham cua be >= 76px. Hai quy tac nay va nhau, nen o day lay chieu
+   cao toi da ma thanh cho phep (64px) va bu bang be ngang >= 76px. */
+.kid-topbar-home {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 64px;
+  min-width: var(--tap);
+  padding: 0 18px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--line);
+  font: 800 1.05rem/1 var(--font-display);
+  white-space: nowrap;
+}
+
+.kid-topbar-home:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--line);
+}
+
+.kid-topbar-home:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.kid-topbar-home span[aria-hidden="true"] {
+  font-size: 1.4rem;
+}
+
+.kid-topbar-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 800 clamp(1.3rem, 3.4vw, 1.9rem) / 1.15 var(--font-display);
+  color: var(--c700, var(--ink));
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kid-topbar-progress {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.kid-step {
+  flex: 1;
+  height: 14px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.kid-step.done {
+  background: var(--c400, var(--brand-400));
+  box-shadow: inset 0 0 0 2px var(--c700, var(--brand-700));
+}
+
+.kid-topbar-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 64px;
+  min-width: var(--tap);
+  padding: 0 16px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--line);
+  font: 800 1.2rem/1 var(--font-display);
+}
+
+.kid-topbar-spacer {
+  width: 56px;
+  flex: none;
+}
+
+/* Nut khoa vao khu phu huynh – 48px theo Muc 5.2 */
+.kid-lock {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.kid-lock:hover {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+.kid-lock:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* ── Dau trang lop hoc cua be ────────────────────────────────── */
+.kid-home-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  margin-bottom: var(--space-5);
+}
+
+.kid-home-head h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 800 clamp(1.6rem, 5vw, 2.6rem) / 1.1 var(--font-display);
+  color: var(--ink);
+}
+
+/* ── Luoi the bai hoc: 2 cot mobile, 3 cot desktop ───────────── */
+.kid-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (min-width: 760px) {
+  .kid-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.kid-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px 16px;
+  border-radius: var(--r-lg);
+  border: 3px solid transparent;
+  background: var(--c50);
+  box-shadow: 0 6px 0 var(--c700);
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.kid-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 0 var(--c700);
+}
+
+.kid-card:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 var(--c700);
+}
+
+.kid-card:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: 4px;
+}
+
+.kid-card-icon {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  background: var(--c400);
+  box-shadow: 0 5px 0 var(--c700);
+  font: 800 1.9rem/1 var(--font-display);
+  color: var(--ink);
+}
+
+.kid-card-name {
+  margin: 0;
+  font: 800 clamp(1.1rem, 3.6vw, 1.4rem) / 1.1 var(--font-display);
+  color: var(--c700);
+}
+
+.kid-card-stars {
+  display: flex;
+  gap: 3px;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.kid-card-stars i {
+  font-style: normal;
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+
+.kid-card-stars i.on {
+  filter: none;
+  opacity: 1;
+}
+
+/* Nut loa doc ten bai: hang rieng duoi the, cao >= 76px theo nghiem thu
+   Giai doan 2 ("moi vung cham cua be tu 76px tro len"). */
+.kid-card-speak {
+  width: 100%;
+  min-height: var(--tap);
+  margin-top: 4px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--c700);
+  color: var(--ink);
+  font: 800 1.5rem/1 var(--font-display);
+  cursor: pointer;
+}
+
+.kid-card-speak:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--c700);
+}
+
+.kid-card-speak:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* The chua mo (Phong huy hieu lam o Giai doan 6) */
+.kid-card.locked {
+  background: #F1ECE3;
+  box-shadow: 0 6px 0 #D6CBBB;
+  cursor: default;
+}
+
+.kid-card.locked .kid-card-icon {
+  background: #E2D9CB;
+  box-shadow: 0 5px 0 #D6CBBB;
+  filter: grayscale(1);
+}
+
+.kid-card.locked .kid-card-name {
+  color: var(--ink-soft);
+}
+
+.kid-card-soon {
+  font: 700 0.78rem/1 var(--font-body);
+  color: var(--ink-soft);
+}
+
+/* ── Khung skeleton khi dang tai (Muc 5.2) ───────────────────── */
+.kid-skeleton {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+}
+
+.kid-skeleton-mascot {
+  font-size: 4rem;
+  line-height: 1;
+  animation: kidBob 1.6s ease-in-out infinite;
+}
+
+@keyframes kidBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.kid-skeleton-text {
+  font: 800 1.3rem/1.2 var(--font-display);
+  color: var(--ink);
+}
+
+.kid-skeleton-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+@media (min-width: 760px) {
+  .kid-skeleton-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.kid-skeleton-card {
+  height: 150px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--line);
+  animation: kidPulse 1.4s ease-in-out infinite;
+}
+
+.kid-skeleton-card:nth-child(2) { animation-delay: 0.15s; }
+.kid-skeleton-card:nth-child(3) { animation-delay: 0.3s; }
+.kid-skeleton-card:nth-child(4) { animation-delay: 0.45s; }
+.kid-skeleton-card:nth-child(5) { animation-delay: 0.6s; }
+.kid-skeleton-card:nth-child(6) { animation-delay: 0.75s; }
+
+@keyframes kidPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.kid-slow-note {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  padding: var(--space-4);
+  border-radius: var(--r-md);
+  background: var(--try-50);
+  color: var(--try-700);
+  font-weight: 700;
+}
+
+/* ── Khung chung cho mot man bai hoc ─────────────────────────── */
+.kid-lesson {
+  background: var(--c50, var(--surface));
+  border-radius: var(--r-lg);
+  padding: var(--space-5) var(--space-4);
+}
+
+@media (max-width: 480px) {
+  .kid-topbar-home-text {
+    display: none;
+  }
+
+  .kid-topbar-home {
+    padding: 0 14px;
+    font-size: 1.5rem;
+  }
+}
+
+
 
 button,
 input {
@@ -1279,3 +1643,92 @@ input {
   }
 }
 
+
+/* ═══ GIAI ĐOẠN 2 – Chọn bài đọc cho bé (khu phụ huynh, Mục 5.2) ═══ */
+.reading-current {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--rd-50);
+  box-shadow: inset 0 0 0 2px var(--rd-400);
+}
+
+.reading-current-title {
+  font: 800 0.9rem/1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rd-700);
+}
+
+.reading-current p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.passage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.passage-card {
+  display: grid;
+  gap: 6px;
+  min-height: 48px;
+  padding: 14px 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.passage-card:hover {
+  border-color: var(--rd-400);
+}
+
+.passage-card:focus-visible {
+  outline: 3px solid var(--parent-primary);
+  outline-offset: 2px;
+}
+
+.passage-card.active {
+  border-color: var(--rd-700);
+  background: var(--rd-50);
+}
+
+.passage-card strong {
+  font-size: 1rem;
+  color: var(--rd-700);
+}
+
+.passage-card span {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.passage-input {
+  width: 100%;
+  min-height: 110px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.passage-input:focus {
+  outline: 3px solid var(--brand-400);
+  outline-offset: 1px;
+  border-color: var(--brand-700);
+}

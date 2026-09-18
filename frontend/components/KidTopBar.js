@@ -41,11 +41,16 @@ export default function KidTopBar({ subject = "num", title, progress, stars, sta
       )}
 
       {typeof stars === "number" ? (
-        // Giai đoạn 6 sẽ biến ô sao này thành lối vào phòng huy hiệu.
-        <span ref={starBoxRef} className="kid-topbar-stars" aria-label={`${stars} sao`}>
+        // Mục 5.11: bấm vào ô ⭐ cũng mở phòng huy hiệu.
+        <Link
+          ref={starBoxRef}
+          href="/hoc-tap/huy-hieu"
+          className="kid-topbar-stars"
+          aria-label={`${stars} sao, mở phòng huy hiệu`}
+        >
           <span aria-hidden="true">⭐</span>
           <strong>{stars}</strong>
-        </span>
+        </Link>
       ) : (
         <span className="kid-topbar-spacer" aria-hidden="true" />
       )}

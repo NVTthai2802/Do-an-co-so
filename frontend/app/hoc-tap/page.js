@@ -323,15 +323,14 @@ function HocTapHome({ user }) {
           <KidLessonCard key={lesson.href} {...lesson} />
         ))}
 
-        {/* Phòng huy hiệu dựng ở Giai đoạn 6; hiện thẻ ở trạng thái chưa mở
-            để bé thấy trước phần thưởng mà không bấm vào link chưa có. */}
-        <div className="kid-card locked subject-num" aria-label="Huy hiệu, sắp có">
-          <div className="kid-card-icon" aria-hidden="true">
-            🏅
-          </div>
-          <p className="kid-card-name">Huy hiệu</p>
-          <span className="kid-card-soon">Sắp có</span>
-        </div>
+        {/* Thẻ cuối trong lưới, dùng màu thương hiệu (Mục 5.11) */}
+        <KidLessonCard
+          href="/hoc-tap/huy-hieu"
+          subject="num"
+          icon="🏆"
+          name="Huy hiệu"
+          speak="Phòng huy hiệu của bé"
+        />
       </div>
 
       {gateOpen ? (
@@ -679,6 +678,31 @@ function MathGameMode({ onBackToLearn }) {
     [rangeLimit]
   );
 
+  const [newBadge, setNewBadge] = useState(null);
+
+  // Muc 5.11: xong luot choi thi kiem tra xem co huy hieu nao vua mo ra khong,
+  // de man tong ket hien luon huy hieu do kem nut "Xem huy hieu".
+  const checkNewBadge = useCallback(() => {
+    const token = getToken();
+    if (!token) return;
+    request("/learning-results/dashboard", { token })
+      .then((data) => {
+        let seen = [];
+        try {
+          seen = JSON.parse(window.localStorage.getItem("kl_seen_badges") || "[]");
+        } catch {
+          seen = [];
+        }
+        const fresh = (data.badge_catalog || []).find(
+          (item) => item.earned && item.kid_name && !seen.includes(item.id)
+        );
+        if (fresh) setNewBadge(fresh);
+      })
+      .catch(() => {
+        // Khong lay duoc thi thoi, man tong ket van chay binh thuong.
+      });
+  }, []);
+
   const quiz = useQuizSession({ makeQuestion, isCorrect, hintFor, onFinish, starBoxRef });
   const quizAnswer = quiz.answer;
 
@@ -855,6 +879,10 @@ function MathGameMode({ onBackToLearn }) {
     quiz.replay();
   }
 
+  useEffect(() => {
+    if (quiz.finished) checkNewBadge();
+  }, [quiz.finished, checkNewBadge]);
+
   const question = quiz.question;
 
   return (
@@ -977,7 +1005,11 @@ function MathGameMode({ onBackToLearn }) {
           stars={quiz.finished.stars}
           total={quiz.finished.total}
           correctFirstTry={quiz.finished.correctFirstTry}
-          onReplay={quiz.replay}
+          newBadge={newBadge}
+          onReplay={() => {
+            setNewBadge(null);
+            quiz.replay();
+          }}
           onHome={() => router.push("/hoc-tap")}
         />
       ) : null}

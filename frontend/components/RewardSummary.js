@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { celebrateFinish } from "../lib/celebrate";
 import { sfx } from "../lib/sfx";
@@ -12,7 +13,16 @@ import Mascot from "./Mascot";
  * Sao hiện lần lượt, pháo hoa chạy tối đa 2,2 giây rồi dừng; đóng hộp thoại
  * thì dừng hẳn. Bé luôn nhận ít nhất 1 sao kèm lời khen nỗ lực.
  */
-export default function RewardSummary({ stars, total, correctFirstTry, onReplay, onHome, unit = "câu", summaryText }) {
+export default function RewardSummary({
+  stars,
+  total,
+  correctFirstTry,
+  onReplay,
+  onHome,
+  unit = "câu",
+  summaryText,
+  newBadge,
+}) {
   const [shown, setShown] = useState(0);
   const replayRef = useRef(null);
   const stopRef = useRef(null);
@@ -64,10 +74,28 @@ export default function RewardSummary({ stars, total, correctFirstTry, onReplay,
           ))}
         </div>
 
+        {/* Mục 6.1 cấp 3: vừa mở huy hiệu mới thì hiện luôn huy hiệu đó. */}
+        {newBadge ? (
+          <div className="reward-badge">
+            <span className={`badge-medal tone-${newBadge.tone}`}>
+              <span aria-hidden="true">{newBadge.icon}</span>
+            </span>
+            <div>
+              <span className="reward-badge-tag">Huy hiệu mới!</span>
+              <strong>{newBadge.kid_name || newBadge.name}</strong>
+            </div>
+          </div>
+        ) : null}
+
         <div className="reward-actions">
           <button ref={replayRef} type="button" className="kbtn subject-ok" onClick={onReplay}>
             ▶ Chơi tiếp
           </button>
+          {newBadge ? (
+            <Link href="/hoc-tap/huy-hieu" className="kbtn subject-num">
+              🏆 Xem huy hiệu
+            </Link>
+          ) : null}
           <button type="button" className="kbtn soft subject-num" onClick={onHome}>
             🏠 Về lớp
           </button>

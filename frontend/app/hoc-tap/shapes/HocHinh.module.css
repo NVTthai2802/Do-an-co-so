@@ -35,7 +35,7 @@
 
 .tabActive {
   background: #fff;
-  color: #ef6f5f;
+  color: var(--brand-700);
   box-shadow: 0 6px 18px rgba(100, 80, 70, 0.08);
 }
 

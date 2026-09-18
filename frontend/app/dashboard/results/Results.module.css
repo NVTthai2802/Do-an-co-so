@@ -57,7 +57,7 @@
 
 .heroCopy p {
   max-width: 62ch;
-  color: rgba(248, 250, 252, 0.82);
+  color: rgba(248, 250, 252, 0.95);
   line-height: 1.7;
 }
 
@@ -74,21 +74,20 @@
   min-width: 132px;
   padding: 12px 14px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(12px);
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 
 .statPill span {
   font-size: 0.74rem;
-  color: rgba(248, 250, 252, 0.68);
+  color: var(--ink-soft);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .statPill strong {
   font-size: 1rem;
-  color: #fff;
+  color: var(--ink);
 }
 
 .ringCard {
@@ -184,7 +183,7 @@
 }
 
 .summaryLabel {
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -199,7 +198,7 @@
 
 .summaryHint {
   margin: 0;
-  color: #64748b;
+  color: var(--ink-soft);
   line-height: 1.5;
 }
 
@@ -244,7 +243,7 @@
 
 .panelHeader p {
   margin: 0;
-  color: #64748b;
+  color: var(--ink-soft);
   line-height: 1.6;
 }
 
@@ -275,7 +274,7 @@
 }
 
 .trendMeta span {
-  color: #64748b;
+  color: var(--ink-soft);
 }
 
 .chartLayout {
@@ -352,7 +351,7 @@
 }
 
 .chartLabel span {
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.82rem;
 }
 
@@ -379,7 +378,7 @@
 }
 
 .asideLabel {
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.76rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -439,7 +438,7 @@
 }
 
 .skillMeta {
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.84rem;
   margin-top: 4px;
 }
@@ -481,7 +480,7 @@
 }
 
 .skillHint {
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.84rem;
 }
 
@@ -518,7 +517,7 @@
 }
 
 .cameraTop span {
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.84rem;
 }
 
@@ -537,7 +536,7 @@
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.84rem;
 }
 
@@ -573,7 +572,7 @@
 
 .reportItem span,
 .timelineItem span {
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.84rem;
 }
 
@@ -612,7 +611,7 @@
 
 .recommendationHead p {
   margin: 0;
-  color: #64748b;
+  color: var(--ink-soft);
   line-height: 1.6;
 }
 
@@ -665,7 +664,7 @@
 }
 
 .badgeItem span {
-  color: #64748b;
+  color: var(--ink-soft);
   line-height: 1.5;
 }
 
@@ -703,7 +702,7 @@
 }
 
 .documentHead strong {
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.88rem;
 }
 
@@ -733,7 +732,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  color: #64748b;
+  color: var(--ink-soft);
   font-size: 0.84rem;
 }
 
@@ -804,7 +803,7 @@
   padding: 20px;
   border-radius: 20px;
   background: #f8fafc;
-  color: #64748b;
+  color: var(--ink-soft);
   border: 1px dashed rgba(148, 163, 184, 0.4);
   line-height: 1.6;
 }

@@ -34,9 +34,9 @@
 }
 
 .tabActive {
-  background: #fff;
-  color: #ef6f5f;
-  box-shadow: 0 6px 18px rgba(100, 80, 70, 0.08);
+  background: var(--surface);
+  color: var(--brand-700);
+  box-shadow: var(--shadow-1);
 }
 
 .learnSection {
@@ -68,8 +68,9 @@
 }
 
 .letterBtnActive {
-  background: linear-gradient(135deg, var(--accent), #5e74f6);
-  color: #fff;
+  background: var(--let-400);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--let-700);
   transform: translateY(-2px);
 }
 
@@ -144,7 +145,7 @@
 }
 
 .lowercase {
-  color: #ef6f5f;
+  color: var(--let-700);
   font-size: 2.25rem;
   font-weight: 900;
   line-height: 1;

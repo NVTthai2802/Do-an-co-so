@@ -154,11 +154,11 @@
   place-items: center;
   border: none;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  color: #fff;
+  background: var(--brand-400);
+  color: var(--ink);
   font-size: 1.5rem;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(255, 122, 89, 0.35);
+  box-shadow: 0 5px 0 var(--brand-700);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
@@ -181,7 +181,8 @@
 
 .playButtonActive {
   animation: playPulse 1.8s ease-in-out infinite;
-  background: linear-gradient(135deg, #ff9a8b 0%, #ff8f7f 100%);
+  background: var(--brand-400);
+  color: var(--ink);
 }
 
 @keyframes playPulse {
@@ -248,17 +249,17 @@
 }
 
 .speedPill:hover {
-  background: #fff5ef;
+  background: var(--brand-50);
 }
 
 .speedPillActive {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  color: #fff;
+  background: var(--brand-400);
+  color: var(--ink);
   box-shadow: 0 4px 14px rgba(255, 122, 89, 0.25);
 }
 
 .speedPillActive:hover {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: var(--brand-400);
 }
 
 /* ─── Voice Selector ─── */
@@ -267,9 +268,9 @@
   align-items: center;
   gap: 10px;
   padding: 12px 18px;
-  border-radius: 18px;
-  background: #fff;
-  border: 1.5px solid rgba(26, 24, 21, 0.06);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1.5px solid var(--line);
 }
 
 .voiceLabel {
@@ -284,10 +285,11 @@
 
 .voiceSelect {
   flex: 1;
+  min-width: 0; /* cho phep select co lai, tranh cuon ngang o 375px */
   padding: 8px 12px;
-  border: 1.5px solid rgba(26, 24, 21, 0.08);
-  border-radius: 12px;
-  background: #fffcfa;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
   font-family: inherit;
   font-size: 0.88rem;
   color: var(--text);

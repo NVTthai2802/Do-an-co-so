@@ -318,6 +318,10 @@ def _row_skill_key(row) -> str | None:
     return None
 
 
+# Cac mode noi ro ket qua KHONG den tu camera (Muc 5.4 - sua du lieu P0).
+NON_CAMERA_MODES = {"tap", "compose", "guess", "manual", "keyboard"}
+
+
 def _is_camera_result(row) -> bool:
     module_key = _normalize_text(row.get("module_key"))
     activity_key = _normalize_text(row.get("activity_key"))
@@ -326,6 +330,13 @@ def _is_camera_result(row) -> bool:
 
     if "camera" in activity_key or "camera" in mode:
         return True
+
+    # Ban ghi noi ro cach tra loi thi tin theo no. Truoc day moi ket qua cua
+    # mon Toan / Hinh deu bi tinh la camera, ke ca khi be chi bam nut, nen huy
+    # hieu camera mo nham va bao cao hien "Ket qua AI camera" cho ca be chua
+    # tung bat camera.
+    if mode in NON_CAMERA_MODES or activity_key.startswith("tap_"):
+        return False
 
     return module_key in {"geometry", "math"} and activity_key not in {"speech_evaluation", "ocr_summary"}
 
@@ -594,7 +605,7 @@ def _build_ali(skill_snapshot: dict[str, Any]) -> dict[str, Any]:
         note = f"Điểm mạnh hiện tại của bé nằm ở {', '.join(note_parts[:3])}."
 
     if attempts.get("time_score", 0) == 0:
-        note += " Học giờ chưa có dữ liệu nên ALI chưa phản ánh đầy đủ."
+        note += " Học giờ chưa có dữ liệu nên chỉ số học tập chưa phản ánh đầy đủ."
 
     return {
         "score": ali_score,
@@ -798,6 +809,221 @@ def _build_reading_results(rows: list[dict[str, Any]], documents: list[dict[str,
     }
 
 
+# ── Huy hieu (Muc 5.11) ─────────────────────────────────────────────────
+# Moi huy hieu co id CO DINH de frontend nho duoc "da xem" qua localStorage.
+# kid_name / kid_description la ban danh cho be; name / description giu nguyen
+# cho bao cao phu huynh. kid_name rong = khong hien o phong huy hieu cua be.
+BADGE_DEFINITIONS = [
+    {
+        "id": "start",
+        "name": "Khởi động",
+        "kid_name": "Bắt đầu",
+        "icon": "🚀",
+        "description": "Đã có ít nhất một hoạt động học tập.",
+        "kid_description": "Con đã học bài đầu tiên rồi!",
+        "tone": "blue",
+        "target": 1,
+        "source": "total_results",
+    },
+    {
+        "id": "hardworking",
+        "name": "Chăm chỉ",
+        "kid_name": "Ong chăm chỉ",
+        "icon": "🐝",
+        "description": "Hoàn thành từ 10 hoạt động trở lên.",
+        "kid_description": "Học đủ 10 bài để nhận huy hiệu Ong chăm chỉ!",
+        "tone": "amber",
+        "target": 10,
+        "source": "total_results",
+    },
+    {
+        "id": "streak3",
+        "name": "Bền bỉ",
+        "kid_name": "Lửa 3 ngày",
+        "icon": "🔥",
+        "description": "Duy trì chuỗi học tập từ 3 ngày.",
+        "kid_description": "Học 3 ngày liền để nhận huy hiệu Lửa 3 ngày!",
+        "tone": "teal",
+        "target": 3,
+        "source": "streak",
+    },
+    {
+        "id": "streak7",
+        "name": "Đều đặn",
+        "kid_name": "Cầu vồng 7 ngày",
+        "icon": "🌈",
+        "description": "Chuỗi học tập từ 7 ngày.",
+        "kid_description": "Học 7 ngày liền để nhận huy hiệu Cầu vồng!",
+        "tone": "green",
+        "target": 7,
+        "source": "streak",
+    },
+    {
+        "id": "alphabet",
+        "name": "Bảng chữ cái",
+        "kid_name": "Vua chữ cái",
+        "icon": "🔤",
+        "description": "Điểm chữ cái đạt từ 85 trở lên.",
+        "kid_description": "Học thật giỏi bảng chữ cái để thành Vua chữ cái!",
+        "tone": "coral",
+        "target": 85,
+        "source": "skill:alphabet_score",
+    },
+    {
+        "id": "numbers",
+        "name": "Học số",
+        "kid_name": "Bạn của số",
+        "icon": "🔢",
+        "description": "Điểm số đạt từ 85 trở lên.",
+        "kid_description": "Nhận biết số thật giỏi để thành Bạn của số!",
+        "tone": "yellow",
+        "target": 85,
+        "source": "skill:number_score",
+    },
+    {
+        "id": "shapes",
+        "name": "Hình học",
+        "kid_name": "Thám tử hình",
+        "icon": "🔺",
+        "description": "Điểm hình học đạt từ 85 trở lên.",
+        "kid_description": "Nhận ra thật nhiều hình để thành Thám tử hình!",
+        "tone": "blue",
+        "target": 85,
+        "source": "skill:geometry_score",
+    },
+    {
+        "id": "math",
+        "name": "Phép toán",
+        "kid_name": "Siêu cộng trừ",
+        "icon": "➕",
+        "description": "Điểm phép toán đạt từ 85 trở lên.",
+        "kid_description": "Làm toán thật giỏi để thành Siêu cộng trừ!",
+        "tone": "violet",
+        "target": 85,
+        "source": "skill:math_score",
+    },
+    {
+        "id": "reading",
+        "name": "Luyện đọc",
+        "kid_name": "Giọng đọc hay",
+        "icon": "📖",
+        "description": "Điểm luyện đọc đạt từ 85 trở lên.",
+        "kid_description": "Đọc thật rõ ràng để có Giọng đọc hay!",
+        "tone": "green",
+        "target": 85,
+        "source": "skill:reading_score",
+    },
+    {
+        "id": "readaloud",
+        "name": "Đọc lên tiếng",
+        "kid_name": "Đọc to",
+        "icon": "🎤",
+        "description": "Đã hoàn thành ít nhất một phiên luyện đọc.",
+        "kid_description": "Đọc to một bài cho máy nghe để nhận huy hiệu Đọc to!",
+        "tone": "pink",
+        "target": 1,
+        "source": "reading_words",
+    },
+    {
+        "id": "camera",
+        "name": "Mắt camera",
+        "kid_name": "Bàn tay thần kì",
+        "icon": "🖐️",
+        "description": "Đã trả lời bằng camera ít nhất một lần.",
+        "kid_description": "Trả lời bằng ngón tay trước camera để nhận Bàn tay thần kì!",
+        "tone": "cyan",
+        "target": 1,
+        "source": "camera_attempts",
+    },
+    {
+        "id": "superstar",
+        "name": "Siêu sao AI",
+        "kid_name": "Siêu sao",
+        "icon": "🌟",
+        "description": "Chỉ số học tập từ 85 trở lên.",
+        "kid_description": "Học đều tất cả các môn để thành Siêu sao!",
+        "tone": "purple",
+        "target": 85,
+        "source": "ali",
+    },
+    {
+        # Chi hien o bao cao phu huynh: kid_name de rong nen phong huy hieu
+        # cua be bo qua the nay (Muc 5.11).
+        "id": "smartdoc",
+        "name": "Tài liệu thông minh",
+        "kid_name": "",
+        "icon": "📄",
+        "description": "Đã xử lý ít nhất một tài liệu học tập.",
+        "kid_description": "",
+        "tone": "slate",
+        "target": 1,
+        "source": "documents",
+    },
+]
+
+
+def _badge_progress_value(definition: dict[str, Any], context: dict[str, Any]) -> float:
+    source = definition["source"]
+    if source.startswith("skill:"):
+        return float(context["skill_scores"].get(source.split(":", 1)[1], 0) or 0)
+    return float(context.get(source, 0) or 0)
+
+
+def _badge_context(
+    summary: dict[str, Any],
+    skill_cards: list[dict[str, Any]],
+    ali: dict[str, Any],
+    documents: list[dict[str, Any]],
+    camera_results: dict[str, Any],
+    reading_results: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "skill_scores": {item["key"]: item["score"] for item in skill_cards},
+        "total_results": summary.get("total_results", 0),
+        "streak": summary.get("current_streak_days", 0),
+        "ali": ali.get("score", 0),
+        "documents": len(documents),
+        "camera_attempts": (camera_results.get("summary") or {}).get("attempts", 0),
+        "reading_words": (reading_results.get("summary") or {}).get("total_words", 0),
+    }
+
+
+def _build_badge_catalog(
+    summary: dict[str, Any],
+    skill_cards: list[dict[str, Any]],
+    ali: dict[str, Any],
+    documents: list[dict[str, Any]],
+    camera_results: dict[str, Any],
+    reading_results: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """MOI huy hieu kem trang thai va tien do (Muc 5.11).
+
+    Tien do bi chan tran o moc, de "Lua 3 ngay" hien 3/3 chu khong phai 30/3.
+    """
+    context = _badge_context(summary, skill_cards, ali, documents, camera_results, reading_results)
+    catalog = []
+
+    for definition in BADGE_DEFINITIONS:
+        target = definition["target"]
+        value = _badge_progress_value(definition, context)
+        current = int(min(value, target))
+        catalog.append(
+            {
+                "id": definition["id"],
+                "name": definition["name"],
+                "kid_name": definition["kid_name"],
+                "icon": definition["icon"],
+                "description": definition["description"],
+                "kid_description": definition["kid_description"],
+                "tone": definition["tone"],
+                "earned": value >= target,
+                "progress": {"current": current, "target": target},
+            }
+        )
+
+    return catalog
+
+
 def _build_badges(
     summary: dict[str, Any],
     skill_cards: list[dict[str, Any]],
@@ -806,34 +1032,37 @@ def _build_badges(
     camera_results: dict[str, Any],
     reading_results: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    skill_scores = {item["key"]: item["score"] for item in skill_cards}
-    earned = []
+    """Chi gom huy hieu DA DAT - giu nguyen hinh dang cu cho bao cao phu huynh,
+    chi them truong `id` (Muc 5.11)."""
+    catalog = _build_badge_catalog(
+        summary, skill_cards, ali, documents, camera_results, reading_results
+    )
+    return [
+        {
+            "id": item["id"],
+            "name": item["name"],
+            "description": item["description"],
+            "tone": item["tone"],
+        }
+        for item in catalog
+        if item["earned"]
+    ]
 
-    def add_badge(name: str, description: str, condition: bool, tone: str = "neutral"):
-        if condition:
-            earned.append(
-                {
-                    "name": name,
-                    "description": description,
-                    "tone": tone,
-                }
-            )
 
-    add_badge("Khởi động", "Đã có ít nhất một hoạt động học tập.", summary["total_results"] > 0, "blue")
-    add_badge("Chăm chỉ", "Hoàn thành từ 10 hoạt động trở lên.", summary["total_results"] >= 10, "amber")
-    add_badge("Bền bỉ", "Duy trì chuỗi học tập từ 3 ngày.", summary["current_streak_days"] >= 3, "teal")
-    add_badge("Đều đặn", "Chuỗi học tập từ 7 ngày.", summary["current_streak_days"] >= 7, "green")
-    add_badge("Bảng chữ cái", "Điểm chữ cái đạt từ 85 trở lên.", skill_scores.get("alphabet_score", 0) >= 85, "coral")
-    add_badge("Học số", "Điểm số đạt từ 85 trở lên.", skill_scores.get("number_score", 0) >= 85, "yellow")
-    add_badge("Hình học", "Điểm hình học đạt từ 85 trở lên.", skill_scores.get("geometry_score", 0) >= 85, "blue")
-    add_badge("Phép toán", "Điểm phép toán đạt từ 85 trở lên.", skill_scores.get("math_score", 0) >= 85, "violet")
-    add_badge("Luyện đọc", "Điểm luyện đọc đạt từ 85 trở lên.", skill_scores.get("reading_score", 0) >= 85, "green")
-    add_badge("Siêu sao AI", "ALI từ 85 trở lên.", ali["score"] >= 85, "purple")
-    add_badge("Tài liệu thông minh", "Đã xử lý ít nhất một tài liệu học tập.", len(documents) > 0, "slate")
-    add_badge("Mắt camera", "Đã có dữ liệu AI camera.", camera_results["summary"]["attempts"] > 0, "cyan")
-    add_badge("Đọc lên tiếng", "Đã hoàn thành ít nhất một phiên luyện đọc.", reading_results["summary"]["total_words"] > 0, "pink")
+def _sum_total_stars(rows: list[dict[str, Any]]) -> int:
+    """Cong so sao tu detail.stars cua tung luot choi (Muc 5.11).
 
-    return earned
+    Ban ghi hong hoac khong co sao thi bo qua chu khong lam vo bao cao.
+    """
+    total = 0
+    for row in rows:
+        detail = _safe_json_loads(row.get("detail_json"))
+        stars = detail.get("stars")
+        if isinstance(stars, bool):
+            continue
+        if isinstance(stars, (int, float)):
+            total += int(stars)
+    return total
 
 
 def _build_recommendations(
@@ -963,6 +1192,10 @@ def get_learning_dashboard(
     camera_results = _build_camera_results(rows)
     reading_results = _build_reading_results(rows, documents)
     badges = _build_badges(summary, skill_cards, ali, documents, camera_results, reading_results)
+    badge_catalog = _build_badge_catalog(
+        summary, skill_cards, ali, documents, camera_results, reading_results
+    )
+    total_stars = _sum_total_stars(rows)
     recommendations = _build_recommendations(summary, skill_cards, trend, camera_results, reading_results)
     recent_results = list_learning_results(conn, user_id, limit=limit)
 
@@ -970,6 +1203,8 @@ def get_learning_dashboard(
         **summary,
         "streak_days": summary["current_streak_days"],
         "badges_count": len(badges),
+        # Muc 5.11: tong sao gom tu detail.stars cua tung luot 5 cau.
+        "total_stars": total_stars,
         "ali_score": ali["score"],
         "ali_label": ali["label"],
     }
@@ -993,6 +1228,10 @@ def get_learning_dashboard(
         "camera_results": camera_results,
         "reading_results": reading_results,
         "badges": badges,
+        # Muc 5.11: MOI huy hieu kem trang thai, cho phong huy hieu cua be.
+        # Truong "badges" o tren giu nguyen (chi huy hieu da dat) de trang bao
+        # cao phu huynh hien tai khong bi vo.
+        "badge_catalog": badge_catalog,
         "recommendations": recommendations,
         "recent_results": recent_results,
 

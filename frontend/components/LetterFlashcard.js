@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { speakVietnamese } from "../lib/speech";
-import { recordLearningResult } from "../lib/learning";
+import RewardSummary from "./RewardSummary";
 import styles from "../app/hoc-tap/letters/HocChu.module.css";
 
 function wrapIndex(index, total) {
@@ -29,16 +29,28 @@ function findInitialIndex(items, initialLetter) {
   return index >= 0 ? index : 0;
 }
 
-export default function LetterFlashcard({ items = [], initialLetter = "" }) {
+export default function LetterFlashcard({ items = [], initialLetter = "", onHome }) {
   const [currentIndex, setCurrentIndex] = useState(() =>
     findInitialIndex(items, initialLetter)
   );
   const [flipped, setFlipped] = useState(false);
+  // Xong MỘT VÒNG thẻ thì chúc mừng cấp 3 (Mục 6.3, bảng "chỗ gắn hiệu ứng").
+  const [seen, setSeen] = useState(() => new Set());
+  const [celebrated, setCelebrated] = useState(false);
 
   useEffect(() => {
-    setCurrentIndex(findInitialIndex(items, initialLetter));
+    const start = findInitialIndex(items, initialLetter);
+    setCurrentIndex(start);
     setFlipped(false);
+    setSeen(new Set([start]));
+    setCelebrated(false);
   }, [items, initialLetter]);
+
+  const roundDone = items.length > 0 && seen.size >= items.length;
+
+  useEffect(() => {
+    if (roundDone && !celebrated) setCelebrated(true);
+  }, [roundDone, celebrated]);
 
   if (!items.length) {
     return <div className="info">Chưa có dữ liệu flashcard.</div>;
@@ -46,32 +58,24 @@ export default function LetterFlashcard({ items = [], initialLetter = "" }) {
 
   const current = items[currentIndex] || items[0];
 
-  useEffect(() => {
-    void recordLearningResult({
-      module_key: "letters",
-      activity_key: "flashcard_view",
-      title: `Flashcard chữ ${current.letter}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        letter: current.letter,
-        word: current.word || "",
-        example: current.example || "",
-        index: currentIndex,
-        total: items.length,
-      },
-    });
-  }, [currentIndex, current.letter, current.example, current.word, items.length]);
-
   const goToIndex = (nextIndex) => {
-    setCurrentIndex(wrapIndex(nextIndex, items.length));
+    const target = wrapIndex(nextIndex, items.length);
+    setCurrentIndex(target);
     setFlipped(false);
+    setSeen((prev) => {
+      if (prev.has(target)) return prev;
+      const next = new Set(prev);
+      next.add(target);
+      return next;
+    });
+  };
+
+  const replayRound = () => {
+    setSeen(new Set([currentIndex]));
+    setCelebrated(false);
   };
 
   const speakLetter = () => speakVietnamese(current.sound || current.letter || current.label || "");
-  const speakWord = () => speakVietnamese(current.word || "");
   const speakExample = () => speakVietnamese(current.example || current.word || "");
 
   const shuffledIndex = items.length <= 1 ? 0 : Math.floor(Math.random() * items.length);
@@ -85,7 +89,7 @@ export default function LetterFlashcard({ items = [], initialLetter = "" }) {
           <p>Bấm vào thẻ để lật, nghe phát âm và chuyển sang chữ khác.</p>
         </div>
         <span className="badge">
-          {currentIndex + 1}/{items.length}
+          Đã xem {seen.size}/{items.length} thẻ
         </span>
       </div>
 
@@ -120,52 +124,78 @@ export default function LetterFlashcard({ items = [], initialLetter = "" }) {
                   Chữ thường: {current.letter.toLocaleLowerCase("vi-VN")}
                 </span>
               </div>
-              <p className={styles.flashcardHint}>Xem ví dụ và nghe lại âm</p>
+              <div className={styles.flashcardBackActions}>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className={styles.flashcardBackBtn}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    speakExample();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      speakExample();
+                    }
+                  }}
+                >
+                  🔊 Nghe ví dụ
+                </span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className={styles.flashcardBackBtn}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    goToIndex(shuffledIndex);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      goToIndex(shuffledIndex);
+                    }
+                  }}
+                >
+                  🔀 Xáo thẻ
+                </span>
+              </div>
             </div>
           </div>
         </button>
       </div>
 
+      {/* Mục 5.5: giảm từ 7 nút xuống còn 3 nút to — ◀ · 🔊 · ▶.
+          Lật thẻ bằng cách chạm vào chính thẻ. "Xáo thẻ" và "Nghe ví dụ"
+          chuyển sang mặt sau của thẻ. */}
       <div className={styles.flashcardControls}>
         <button
-          className="btn secondary compact"
           type="button"
+          className="kbtn subject-let"
           onClick={() => goToIndex(currentIndex - 1)}
           disabled={items.length <= 1}
+          aria-label="Thẻ trước"
         >
-          Thẻ trước
-        </button>
-        <button className="btn primary compact" type="button" onClick={speakLetter}>
-          Nghe chữ
+          ◀
         </button>
         <button
-          className="btn secondary compact"
           type="button"
-          onClick={() => setFlipped((value) => !value)}
+          className="kbtn subject-let"
+          onClick={speakLetter}
+          aria-label={`Nghe chữ ${current.letter}`}
         >
-          Lật thẻ
-        </button>
-        <button className="btn primary compact" type="button" onClick={speakWord}>
-          Nghe từ
-        </button>
-        <button className="btn secondary compact" type="button" onClick={speakExample}>
-          Nghe ví dụ
+          🔊
         </button>
         <button
-          className="btn secondary compact"
           type="button"
-          onClick={() => goToIndex(shuffledIndex)}
-          disabled={items.length <= 1}
-        >
-          Xáo thẻ
-        </button>
-        <button
-          className="btn secondary compact"
-          type="button"
+          className="kbtn subject-let"
           onClick={() => goToIndex(currentIndex + 1)}
           disabled={items.length <= 1}
+          aria-label="Thẻ tiếp"
         >
-          Thẻ tiếp
+          ▶
         </button>
       </div>
 
@@ -183,6 +213,17 @@ export default function LetterFlashcard({ items = [], initialLetter = "" }) {
           </button>
         ))}
       </div>
+
+      {celebrated ? (
+        <RewardSummary
+          stars={3}
+          total={items.length}
+          correctFirstTry={items.length}
+          summaryText={`Con đã xem hết ${items.length} thẻ chữ!`}
+          onReplay={replayRound}
+          onHome={onHome || replayRound}
+        />
+      ) : null}
     </section>
   );
 }

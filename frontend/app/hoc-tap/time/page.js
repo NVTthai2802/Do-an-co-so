@@ -1,9 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import CompactNumberPicker from "../../../components/CompactNumberPicker";
-import KidNav from "../../../components/KidNav";
+import KidTopBar from "../../../components/KidTopBar";
+import FeedbackBubble from "../../../components/FeedbackBubble";
+import RewardSummary from "../../../components/RewardSummary";
+import KidSwitches from "../../../components/KidSwitches";
+import useQuizSession from "../../../hooks/useQuizSession";
 import { recordLearningResult } from "../../../lib/learning";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./TimeLesson.module.css";
@@ -76,77 +80,73 @@ function ClockFace({ hour = 12, minute = 0, size = "large" }) {
 }
 
 export default function TimeLesson() {
+  const router = useRouter();
   const [mode, setMode] = useState("hours");
-  const [guess, setGuess] = useState(() => createGuess());
-  const [feedback, setFeedback] = useState("Ghép giờ và phút đúng với mặt đồng hồ.");
   const [selectedHour, setSelectedHour] = useState(1);
   const [selectedMinute, setSelectedMinute] = useState(0);
-  const nextTimerRef = useRef(null);
+  const starBoxRef = useRef(null);
 
-  useEffect(() => {
-    return () => {
-      if (nextTimerRef.current) clearTimeout(nextTimerRef.current);
-    };
+  const makeQuestion = useCallback(() => createGuess(), []);
+
+  const isCorrect = useCallback(
+    (question, value) => value.hour === question.hour && value.minute === question.minute,
+    []
+  );
+
+  const hintFor = useCallback(
+    (question) =>
+      `Kim ngắn chỉ ${question.hour}, kim dài chỉ ${formatMinute(question.minute)} phút.`,
+    []
+  );
+
+  // Ghi kết quả CẢ LƯỢT, thời gian đo thật (Mục 5.4 áp cho cả bài Giờ).
+  const onFinish = useCallback((summary) => {
+    void recordLearningResult({
+      module_key: "time",
+      activity_key: "tap_clock_guess",
+      title: "Đoán giờ",
+      score: summary.correctFirstTry,
+      max_score: summary.total,
+      accuracy: Math.round((summary.correctFirstTry / summary.total) * 100),
+      time_spent_seconds: summary.timeSpentSeconds,
+      detail: {
+        mode: "tap",
+        questions: summary.total,
+        correct_first_try: summary.correctFirstTry,
+        total_attempts: summary.totalTries,
+        wrong_attempts: Math.max(0, summary.totalTries - summary.total),
+        stars: summary.stars,
+      },
+    });
   }, []);
+
+  const quiz = useQuizSession({ makeQuestion, isCorrect, hintFor, onFinish, starBoxRef });
+  const guess = quiz.question;
+
+  // Sang câu mới thì đưa hai bánh xe chọn về mặc định.
+  useEffect(() => {
+    setSelectedHour(1);
+    setSelectedMinute(0);
+  }, [quiz.index]);
 
   function speakHour(hour) {
     speakVietnamese(`${hour} giờ`);
   }
 
-  function nextGuess() {
-    if (nextTimerRef.current) {
-      clearTimeout(nextTimerRef.current);
-      nextTimerRef.current = null;
-    }
-    setGuess(createGuess());
-    setSelectedHour(1);
-    setSelectedMinute(0);
-    setFeedback("Ghép giờ và phút đúng với mặt đồng hồ.");
-  }
-
-  function checkAnswer() {
-    if (selectedHour === guess.hour && selectedMinute === guess.minute) {
-      setFeedback("Chính xác! Sang câu mới...");
-      speakVietnamese(`Đúng rồi, ${guess.hour} giờ ${guess.minute} phút`);
-      void recordLearningResult({
-        module_key: "time",
-        activity_key: "clock_guess",
-        title: `Đoán giờ: ${guess.hour}:${String(guess.minute).padStart(2, "0")}`,
-        score: 100,
-        max_score: 100,
-        accuracy: 100,
-        time_spent_seconds: 0,
-        detail: {
-          mode: "guess",
-          target_hour: guess.hour,
-          target_minute: guess.minute,
-          correct: true,
-        },
-      });
-      nextTimerRef.current = setTimeout(nextGuess, 1500);
-      return;
-    }
-
-    setFeedback("Chưa đúng, thử lại nhé.");
-    speakVietnamese("Chưa đúng, thử lại nhé");
+  function checkAnswer(event) {
+    quiz.answer({ hour: selectedHour, minute: selectedMinute }, event.currentTarget);
   }
 
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">Dạy giờ</span>
-            <h1>Nhận diện đồng hồ</h1>
-            <p>Học giờ cơ bản, phút cơ bản và luyện đoán giờ kèm phút.</p>
-          </div>
-          <div className="dashboard-actions">
-            <KidNav />
-            <Link href="/hoc-tap" className="btn secondary">
-              Quay lại
-            </Link>
-          </div>
-        </div>
+    <main className="kid-shell">
+      <KidTopBar
+        subject="tim"
+        title="Giờ"
+        progress={mode === "guess" ? { current: quiz.index, total: quiz.total } : undefined}
+        stars={mode === "guess" ? quiz.stars : undefined}
+        starBoxRef={starBoxRef}
+      />
+      <div className="kid-lesson subject-tim">
 
         <div className="mode-tabs secondary-tabs" role="tablist" aria-label="Phần học đồng hồ">
           <button
@@ -221,10 +221,7 @@ export default function TimeLesson() {
           <section className={styles.guessLayout}>
             <div className={styles.guessClockPanel}>
               <ClockFace hour={guess.hour} minute={guess.minute} />
-              <p>{feedback}</p>
-              <button className="btn secondary compact" onClick={nextGuess}>
-                Câu mới
-              </button>
+              <FeedbackBubble mood={quiz.mood} message={quiz.message} hint={quiz.hint} />
             </div>
 
             <div className={styles.timeAnswerPanel} aria-label="Ghép đáp án giờ và phút">
@@ -254,13 +251,25 @@ export default function TimeLesson() {
                 />
               </div>
 
-              <button className="btn primary compact" onClick={checkAnswer}>
+              <button type="button" className="kbtn subject-tim" onClick={checkAnswer}>
                 Kiểm tra
               </button>
+
+              <KidSwitches />
             </div>
           </section>
         ) : null}
-      </section>
+      </div>
+
+      {mode === "guess" && quiz.finished ? (
+        <RewardSummary
+          stars={quiz.finished.stars}
+          total={quiz.finished.total}
+          correctFirstTry={quiz.finished.correctFirstTry}
+          onReplay={quiz.replay}
+          onHome={() => router.push("/hoc-tap")}
+        />
+      ) : null}
     </main>
   );
 }

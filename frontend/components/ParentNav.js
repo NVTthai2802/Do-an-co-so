@@ -3,13 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const parentLinks = [{ href: "/dashboard/results", path: "/dashboard/results", label: "Báo cáo" }];
+const parentLinks = [
+  { href: "/dashboard", path: "/dashboard", label: "Tổng quan" },
+  { href: "/dashboard/results", path: "/dashboard/results", label: "Báo cáo" },
+  { href: "/dashboard/tools", path: "/dashboard/tools", label: "Công cụ cho bé" },
+  { href: "/dashboard/settings", path: "/dashboard/settings", label: "Cài đặt" },
+];
 
 export default function ParentNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="lesson-nav" aria-label="Quan ly">
+    <nav className="lesson-nav" aria-label="Khu vuc quan ly">
       {parentLinks.map((item) => (
         <Link
           key={item.href}

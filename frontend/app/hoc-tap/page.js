@@ -1,13 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clearSession, getToken, saveSession } from "../../lib/auth";
 import { request } from "../../lib/api";
 import { recordLearningResult } from "../../lib/learning";
 import { speakVietnamese } from "../../lib/speech";
-import KidNav from "../../components/KidNav";
+import KidTopBar from "../../components/KidTopBar";
+import FeedbackBubble from "../../components/FeedbackBubble";
+import RewardSummary from "../../components/RewardSummary";
+import KidSwitches from "../../components/KidSwitches";
+import useQuizSession from "../../hooks/useQuizSession";
 import CompactNumberPicker from "../../components/CompactNumberPicker";
 import ParentalGate from "../../components/ParentalGate";
 
@@ -179,49 +182,58 @@ function createMathProblem(limit = 10) {
   return { left, right, operator: "-", answer: left - right };
 }
 
+const SLOW_NETWORK_MS = 8000;
+
 function HocTapContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lessonType = searchParams.get("lesson");
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [slow, setSlow] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const token = useMemo(() => getToken(), []);
 
   useEffect(() => {
     if (!token) {
       router.replace("/login");
-      return;
+      return undefined;
     }
+
+    let alive = true;
+    setLoading(true);
+    setSlow(false);
+
+    // Mạng chậm: sau 8 giây thì báo cho phụ huynh và cho bấm "Thử lại".
+    const slowTimer = setTimeout(() => {
+      if (alive) setSlow(true);
+    }, SLOW_NETWORK_MS);
 
     request("/auth/me", { token })
       .then((data) => {
+        if (!alive) return;
         setUser(data.user);
         saveSession(token, data.user);
       })
       .catch(() => {
+        if (!alive) return;
         clearSession();
         router.replace("/login");
       })
-      .finally(() => setLoading(false));
-  }, [router, token]);
+      .finally(() => {
+        if (!alive) return;
+        clearTimeout(slowTimer);
+        setLoading(false);
+      });
 
-  async function handleLogout() {
-    try {
-      await request("/auth/logout", { method: "POST", token });
-    } catch {
-      // Local logout should still work if the server is temporarily unavailable.
-    } finally {
-      clearSession();
-      router.replace("/login");
-    }
-  }
+    return () => {
+      alive = false;
+      clearTimeout(slowTimer);
+    };
+  }, [router, token, attempt]);
 
   if (loading) {
-    return (
-      <main className="dashboard-shell">
-        <section className="dashboard-card">Đang mở lớp học...</section>
-      </main>
-    );
+    return <KidLoading slow={slow} onRetry={() => setAttempt((n) => n + 1)} />;
   }
 
   if (lessonType === "numbers") {
@@ -230,7 +242,7 @@ function HocTapContent() {
 
   if (lessonType === "letters") {
     return (
-      <LessonShell title="Dạy chữ" subtitle="Bảng chữ cái tiếng Việt">
+      <LessonShell title="Chữ" subject="let">
         <LetterLesson />
       </LessonShell>
     );
@@ -238,89 +250,88 @@ function HocTapContent() {
 
   if (lessonType === "shapes") {
     return (
-      <LessonShell title="Dạy hình" subtitle="Nhận dạng hình cơ bản">
+      <LessonShell title="Hình" subject="shp">
         <ShapeLesson />
       </LessonShell>
     );
   }
 
-  return <HocTapHome user={user} onLogout={handleLogout} />;
+  return <HocTapHome user={user} />;
 }
 
-function HocTapHome({ user, onLogout }) {
+function KidLoading({ slow, onRetry }) {
+  return (
+    <main className="kid-shell">
+      <div className="kid-skeleton">
+        <div className="kid-skeleton-mascot" aria-hidden="true">
+          ⭐
+        </div>
+        <p className="kid-skeleton-text" role="status">
+          Đang mở lớp học...
+        </p>
+
+        <div className="kid-skeleton-grid" aria-hidden="true">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="kid-skeleton-card" />
+          ))}
+        </div>
+
+        {slow ? (
+          <div className="kid-slow-note" role="alert">
+            <span>Mạng hơi chậm</span>
+            <button type="button" className="kbtn subject-try" onClick={onRetry}>
+              Thử lại
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </main>
+  );
+}
+
+// Lưới bài của bé (Mục 5.2): Số, Chữ, Hình, Giờ, Luyện đọc, Huy hiệu.
+// "Đọc tài liệu" và "AI đọc cho bé" đã chuyển sang /dashboard/tools.
+const kidLessons = [
+  { href: "/hoc-tap?lesson=numbers", subject: "num", icon: "123", name: "Số", speak: "Bài học số" },
+  { href: "/hoc-tap/letters", subject: "let", icon: "A", name: "Chữ", speak: "Bài học chữ" },
+  { href: "/hoc-tap/shapes", subject: "shp", icon: "▲", name: "Hình", speak: "Bài học hình" },
+  { href: "/hoc-tap/time", subject: "tim", icon: "🕐", name: "Giờ", speak: "Bài học giờ" },
+  { href: "/hoc-tap/stt", subject: "rd", icon: "🎤", name: "Luyện đọc", speak: "Bé luyện đọc" },
+];
+
+function HocTapHome({ user }) {
   const router = useRouter();
   const [gateOpen, setGateOpen] = useState(false);
 
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">Lớp học của bé</span>
-            <h1>Xin chào, {user?.name || "bé"}!</h1>
-            <p>Chọn một bài học để bắt đầu.</p>
-          </div>
-          <div className="dashboard-actions">
-            <button className="btn secondary" onClick={onLogout}>
-              Đăng xuất
-            </button>
-            <button
-              type="button"
-              className="gate-trigger"
-              onClick={() => setGateOpen(true)}
-              aria-label="Quay lại khu vực quản lý"
-              title="Quay lại khu vực quản lý"
-            >
-              🔒
-            </button>
-          </div>
-        </div>
+    <main className="kid-shell">
+      <div className="kid-home-head">
+        <h1>Chào {user?.name || "bé"}!</h1>
+        <button
+          type="button"
+          className="kid-lock"
+          onClick={() => setGateOpen(true)}
+          aria-label="Khu vực của bố mẹ"
+          title="Khu vực của bố mẹ"
+        >
+          🔒
+        </button>
+      </div>
 
-        <div className="lesson-grid">
-          <LessonLink
-            href="/hoc-tap?lesson=numbers"
-            icon="🔢"
-            title="Dạy số"
-            text="Nhận biết số 0-100, ghép số và luyện cộng trừ."
-          />
-          <LessonLink
-            href="/hoc-tap/letters"
-            icon="🔤"
-            title="Dạy chữ"
-            text="Làm quen 29 chữ cái tiếng Việt."
-          />
-          <LessonLink
-            href="/hoc-tap/shapes"
-            icon="◯"
-            title="Dạy hình"
-            text="Nhận biết hình tròn, vuông, tam giác."
-          />
-          <LessonLink
-            href="/hoc-tap/time"
-            icon="⏰"
-            title="Dạy giờ"
-            text="Nhận biết đồng hồ và luyện đoán giờ."
-          />
-          <LessonLink
-            href="/hoc-tap/document"
-            icon="📖"
-            title="Đọc tài liệu"
-            text="Tải ảnh, PDF, Word để AI trích xuất văn bản."
-          />
-          <LessonLink
-            href="/hoc-tap/tts"
-            icon="🔊"
-            title="AI đọc cho bé"
-            text="Dán văn bản để AI đọc thành tiếng cho bé nghe."
-          />
-          <LessonLink
-            href="/hoc-tap/stt"
-            icon="🎤"
-            title="Bé luyện đọc"
-            text="Đọc bài cho AI nghe và nhận đánh giá chính xác."
-          />
-        </div>
-      </section>
+      <div className="kid-grid">
+        {kidLessons.map((lesson) => (
+          <KidLessonCard key={lesson.href} {...lesson} />
+        ))}
+
+        {/* Thẻ cuối trong lưới, dùng màu thương hiệu (Mục 5.11) */}
+        <KidLessonCard
+          href="/hoc-tap/huy-hieu"
+          subject="num"
+          icon="🏆"
+          name="Huy hiệu"
+          speak="Phòng huy hiệu của bé"
+        />
+      </div>
 
       {gateOpen ? (
         <ParentalGate
@@ -332,35 +343,56 @@ function HocTapHome({ user, onLogout }) {
   );
 }
 
-function LessonLink({ href, icon, title, text }) {
+function KidLessonCard({ href, subject, icon, name, speak }) {
+  const router = useRouter();
+  const [stars] = useState(0);
+
   return (
-    <Link href={href} className="lesson-card">
-      <div className="lesson-icon">{icon}</div>
-      <h2>{title}</h2>
-      <p>{text}</p>
-      <div className="lesson-cta">Vào học →</div>
-    </Link>
+    <div
+      className={`kid-card subject-${subject}`}
+      role="link"
+      tabIndex={0}
+      onClick={() => router.push(href)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          router.push(href);
+        }
+      }}
+    >
+      <div className="kid-card-icon" aria-hidden="true">
+        {icon}
+      </div>
+      <p className="kid-card-name">{name}</p>
+
+      <div className="kid-card-stars" aria-label={`${stars} trên 3 sao`}>
+        {[0, 1, 2].map((index) => (
+          <i key={index} className={index < stars ? "on" : ""} aria-hidden="true">
+            ⭐
+          </i>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className="kid-card-speak"
+        aria-label={`Nghe đọc: ${name}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          speakVietnamese(speak);
+        }}
+      >
+        🔊
+      </button>
+    </div>
   );
 }
 
-function LessonShell({ title, subtitle, children }) {
+function LessonShell({ title, subject = "num", children }) {
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">{title}</span>
-            <h1>{subtitle}</h1>
-          </div>
-          <div className="dashboard-actions">
-            <KidNav />
-            <Link href="/hoc-tap" className="btn secondary">
-              Quay lại
-            </Link>
-          </div>
-        </div>
-        {children}
-      </section>
+    <main className="kid-shell">
+      <KidTopBar subject={subject} title={title} />
+      <div className={`kid-lesson subject-${subject}`}>{children}</div>
     </main>
   );
 }
@@ -368,29 +400,48 @@ function LessonShell({ title, subtitle, children }) {
 function NumberLesson() {
   const [mode, setMode] = useState("learn");
 
+  // Chế độ "Chơi" dựng khung riêng, vì thanh trên cùng phải mang thanh tiến
+  // độ của lượt chơi và ô đếm sao (Mục 4.3), không chỉ tiêu đề.
+  if (mode === "math") {
+    return <MathGameMode onBackToLearn={() => setMode("learn")} />;
+  }
+
   return (
-    <LessonShell title="Dạy số" subtitle="Số và toán học vui nhộn">
+    <LessonShell title="Số" subject="num">
       <div className="mode-tabs" role="tablist" aria-label="Chế độ học số">
-        <button
-          className={`mode-tab ${mode === "learn" ? "active" : ""}`}
-          onClick={() => setMode("learn")}
-          role="tab"
-          aria-selected={mode === "learn"}
-        >
+        <button className="mode-tab active" role="tab" aria-selected={true} onClick={() => setMode("learn")}>
           Nhận biết số
         </button>
-        <button
-          className={`mode-tab ${mode === "math" ? "active" : ""}`}
-          onClick={() => setMode("math")}
-          role="tab"
-          aria-selected={mode === "math"}
-        >
+        <button className="mode-tab" role="tab" aria-selected={false} onClick={() => setMode("math")}>
           Toán học vui
         </button>
       </div>
 
-      {mode === "learn" ? <NumberReadingMode /> : <MathGameMode />}
+      <NumberReadingMode />
     </LessonShell>
+  );
+}
+
+/** 4 đáp án: 1 đúng + 3 nhiễu gần đúng (Mục 5.4 – giảm tải lựa chọn). */
+function buildChoices(answer, limit) {
+  const set = new Set([answer]);
+  let guard = 0;
+  while (set.size < 4 && guard < 80) {
+    guard += 1;
+    const spread = limit <= 10 ? 3 : 12;
+    const delta = randomInt(1, spread) * (Math.random() > 0.5 ? 1 : -1);
+    const candidate = answer + delta;
+    if (candidate >= 0 && candidate <= limit) set.add(candidate);
+  }
+  for (let n = 0; set.size < 4 && n <= limit; n += 1) set.add(n);
+
+  return [...set].slice(0, 4).sort(() => Math.random() - 0.5);
+}
+
+function speakProblem(problem) {
+  const op = problem.operator === "+" ? "cộng" : "trừ";
+  speakVietnamese(
+    `${readNumberVietnamese(problem.left)} ${op} ${readNumberVietnamese(problem.right)} bằng mấy?`
   );
 }
 
@@ -405,77 +456,21 @@ function NumberReadingMode() {
   function selectDigit(number) {
     setSelectedDigit(number);
     speakNumber(number);
-    void recordLearningResult({
-      module_key: "numbers",
-      activity_key: "digit_explore",
-      title: `Khám phá số ${number}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        mode: "digits",
-        number,
-      },
-    });
   }
 
   function selectTen(number) {
     setSelectedTen(number);
     speakNumber(number);
-    void recordLearningResult({
-      module_key: "numbers",
-      activity_key: "tens_explore",
-      title: `Khám phá số ${number}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        mode: "tens",
-        number,
-      },
-    });
   }
 
   function selectBase(number) {
     setSelectedBase(number);
     speakNumber(number + selectedUnit);
-    void recordLearningResult({
-      module_key: "numbers",
-      activity_key: "compose_base",
-      title: `Ghép số ${number + selectedUnit}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        mode: "compose",
-        base: number,
-        unit: selectedUnit,
-        result: number + selectedUnit,
-      },
-    });
   }
 
   function selectUnit(number) {
     setSelectedUnit(number);
     speakNumber(selectedBase + number);
-    void recordLearningResult({
-      module_key: "numbers",
-      activity_key: "compose_unit",
-      title: `Ghép số ${selectedBase + number}`,
-      score: 85,
-      max_score: 100,
-      accuracy: 85,
-      time_spent_seconds: 0,
-      detail: {
-        mode: "compose",
-        base: selectedBase,
-        unit: number,
-        result: selectedBase + number,
-      },
-    });
   }
 
   return (
@@ -509,11 +504,14 @@ function NumberReadingMode() {
 
       {subMode === "digits" ? (
         <>
-          <div className="chip-grid number-chip-grid">
+          {/* Mục 5.4: lưới số 0–9 dùng nút .kbtn cỡ 76px, không dùng chip nhỏ */}
+          <div className="digit-grid">
             {digits.map((number) => (
               <button
                 key={number}
-                className={`chip ${selectedDigit === number ? "active" : ""}`}
+                type="button"
+                className={`kbtn soft subject-num ${selectedDigit === number ? "is-picked" : ""}`}
+                aria-pressed={selectedDigit === number}
                 onClick={() => selectDigit(number)}
               >
                 {number}
@@ -526,11 +524,13 @@ function NumberReadingMode() {
 
       {subMode === "tens" ? (
         <>
-          <div className="chip-grid number-chip-grid">
+          <div className="digit-grid">
             {roundTens.map((number) => (
               <button
                 key={number}
-                className={`chip ${selectedTen === number ? "active" : ""}`}
+                type="button"
+                className={`kbtn soft subject-num ${selectedTen === number ? "is-picked" : ""}`}
+                aria-pressed={selectedTen === number}
                 onClick={() => selectTen(number)}
               >
                 {number}
@@ -596,7 +596,8 @@ function NumberSpotlight({ number, objectCount }) {
   const visibleObjects = Math.min(objectCount, 30);
 
   return (
-    <div className="spotlight number-spotlight">
+    <div className="spotlight number-spotlight subject-num">
+      {/* Mục 5.4: số đang chọn cỡ ~120px, bên dưới là đồ vật để đếm và nút loa lớn */}
       <div className="big-number">{number}</div>
       <p>
         Số <strong>{readNumberVietnamese(number)}</strong>
@@ -608,25 +609,23 @@ function NumberSpotlight({ number, objectCount }) {
           <span className="object-empty">0 đồ vật</span>
         )}
       </div>
-      <button className="btn primary compact" onClick={() => speakNumber(number)}>
-        Nghe phát âm
+      <button type="button" className="kbtn subject-num" onClick={() => speakNumber(number)}>
+        🔊 Nghe
       </button>
     </div>
   );
 }
 
-function MathGameMode() {
+function MathGameMode({ onBackToLearn }) {
+  const router = useRouter();
   const [rangeLimit, setRangeLimit] = useState(10);
-  const [problem, setProblem] = useState(() => createMathProblem(10));
-  const [composedAnswer, setComposedAnswer] = useState(0);
-  const [detectedNumber, setDetectedNumber] = useState(null);
-  const [feedback, setFeedback] = useState("Sẵn sàng");
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [fingerCount, setFingerCount] = useState(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [handStatus, setHandStatus] = useState("Bật camera rồi giơ số ngón tay");
-  const [wrongAttempts, setWrongAttempts] = useState(0);
+
+  const starBoxRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const handsRef = useRef(null);
@@ -635,27 +634,92 @@ function MathGameMode() {
   const holdStartRef = useRef(0);
   const stableFingerRef = useRef(null);
   const submittedFingerRef = useRef(null);
-  const nextProblemTimerRef = useRef(null);
-  const answerLockedRef = useRef(false);
-  const problemRef = useRef(problem);
-  const wrongAttemptsRef = useRef(0);
+  const answerRef = useRef(null);
+  const buttonRefs = useRef({});
+  // Nguồn thật của đáp án. Chỉ ghi "camera" khi đáp án đến từ MediaPipe
+  // (Mục 5.4 – sửa dữ liệu P0); bé bấm nút thì luôn là "tap".
+  const answerSourceRef = useRef("tap");
 
-  useEffect(() => {
-    return () => {
-      if (nextProblemTimerRef.current) {
-        clearTimeout(nextProblemTimerRef.current);
-      }
-      stopCamera(false);
-    };
+  const makeQuestion = useCallback(() => {
+    const problem = createMathProblem(rangeLimit);
+    return { ...problem, choices: buildChoices(problem.answer, rangeLimit) };
+  }, [rangeLimit]);
+
+  const isCorrect = useCallback((question, value) => value === question.answer, []);
+
+  const hintFor = useCallback((question) => {
+    const op = question.operator === "+" ? "thêm" : "bớt";
+    return `Mình cùng đếm nhé: ${question.left} ${op} ${question.right} là...`;
   }, []);
 
-  useEffect(() => {
-    problemRef.current = problem;
-  }, [problem]);
+  const onFinish = useCallback(
+    (summary) => {
+      // Ghi kết quả CẢ LƯỢT một lần, với thời gian đo thật (Mục 5.4).
+      const source = answerSourceRef.current;
+      void recordLearningResult({
+        module_key: "math",
+        activity_key: source === "camera" ? `camera_math_${rangeLimit}` : `tap_math_${rangeLimit}`,
+        title: `Cộng trừ phạm vi ${rangeLimit}`,
+        score: summary.correctFirstTry,
+        max_score: summary.total,
+        accuracy: Math.round((summary.correctFirstTry / summary.total) * 100),
+        time_spent_seconds: summary.timeSpentSeconds,
+        detail: {
+          mode: source,
+          range_limit: rangeLimit,
+          questions: summary.total,
+          correct_first_try: summary.correctFirstTry,
+          total_attempts: summary.totalTries,
+          wrong_attempts: Math.max(0, summary.totalTries - summary.total),
+          stars: summary.stars,
+        },
+      });
+    },
+    [rangeLimit]
+  );
+
+  const [newBadge, setNewBadge] = useState(null);
+
+  // Muc 5.11: xong luot choi thi kiem tra xem co huy hieu nao vua mo ra khong,
+  // de man tong ket hien luon huy hieu do kem nut "Xem huy hieu".
+  const checkNewBadge = useCallback(() => {
+    const token = getToken();
+    if (!token) return;
+    request("/learning-results/dashboard", { token })
+      .then((data) => {
+        let seen = [];
+        try {
+          seen = JSON.parse(window.localStorage.getItem("kl_seen_badges") || "[]");
+        } catch {
+          seen = [];
+        }
+        const fresh = (data.badge_catalog || []).find(
+          (item) => item.earned && item.kid_name && !seen.includes(item.id)
+        );
+        if (fresh) setNewBadge(fresh);
+      })
+      .catch(() => {
+        // Khong lay duoc thi thoi, man tong ket van chay binh thuong.
+      });
+  }, []);
+
+  const quiz = useQuizSession({ makeQuestion, isCorrect, hintFor, onFinish, starBoxRef });
+  const quizAnswer = quiz.answer;
+
+  const answerFromCamera = useCallback(
+    (value) => {
+      answerSourceRef.current = "camera";
+      quizAnswer(value, buttonRefs.current[value] || null);
+    },
+    [quizAnswer]
+  );
+
+  answerRef.current = answerFromCamera;
 
   useEffect(() => {
-    wrongAttemptsRef.current = wrongAttempts;
-  }, [wrongAttempts]);
+    return () => stopCamera(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (cameraOn && videoRef.current && streamRef.current) {
@@ -664,6 +728,12 @@ function MathGameMode() {
       if (playPromise?.catch) playPromise.catch(() => {});
     }
   }, [cameraOn]);
+
+  // Sang câu mới thì quên số ngón tay đã gửi.
+  useEffect(() => {
+    resetHeldFinger();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quiz.index]);
 
   useEffect(() => {
     if (!cameraOn) return undefined;
@@ -706,7 +776,7 @@ function MathGameMode() {
 
         rafRef.current = requestAnimationFrame(loop);
       } catch {
-        setCameraError("Không tải được nhận diện tay.");
+        setCameraError("Không tải được nhận diện tay. Bé vẫn bấm chọn đáp án được.");
       }
     }
 
@@ -731,23 +801,19 @@ function MathGameMode() {
   }
 
   function processNumberHandResults(results) {
-    if (answerLockedRef.current || rangeLimit !== 10) return;
-
     const totalFingers = countFingersFromResults(results);
-    if (!totalFingers) {
+    if (!results.multiHandLandmarks?.length) {
       resetHeldFinger();
-      setHandStatus("Giơ số ngón tay để trả lời");
+      setHandStatus("Chưa thấy bàn tay");
       return;
     }
 
-    const now = Date.now();
     setFingerCount(totalFingers);
-    setDetectedNumber(totalFingers);
 
+    const now = Date.now();
     if (stableFingerRef.current !== totalFingers) {
       stableFingerRef.current = totalFingers;
       holdStartRef.current = now;
-      submittedFingerRef.current = null;
       setHoldProgress(0);
       setHandStatus(`Đang giữ số ${totalFingers}`);
       return;
@@ -760,127 +826,8 @@ function MathGameMode() {
     if (elapsed >= 3000 && submittedFingerRef.current !== totalFingers) {
       submittedFingerRef.current = totalFingers;
       setHandStatus(`Đã nhận số ${totalFingers}`);
-      evaluateAnswer(totalFingers);
+      answerRef.current?.(totalFingers);
     }
-  }
-
-  function scheduleNextProblem(delay = 1400) {
-    if (nextProblemTimerRef.current) {
-      clearTimeout(nextProblemTimerRef.current);
-    }
-    nextProblemTimerRef.current = setTimeout(() => {
-      nextProblem();
-      nextProblemTimerRef.current = null;
-    }, delay);
-  }
-
-  function evaluateAnswer(number) {
-    if (answerLockedRef.current) return;
-
-    setDetectedNumber(number);
-    if (number === problemRef.current.answer) {
-      const wrongCount = wrongAttemptsRef.current;
-      const sessionScore = Math.max(0, 100 - wrongCount * 20);
-      answerLockedRef.current = true;
-      setWrongAttempts(0);
-      wrongAttemptsRef.current = 0;
-      setFeedback("Chính xác! Sang câu mới...");
-      speakVietnamese("Chính xác");
-      void recordLearningResult({
-        module_key: "math",
-        activity_key: rangeLimit === 10 ? "camera_math_10" : "compose_math_100",
-        title: `Cộng trừ phạm vi ${rangeLimit}`,
-        score: sessionScore,
-        max_score: 100,
-        accuracy: sessionScore,
-        time_spent_seconds: 0,
-        detail: {
-          mode: rangeLimit === 10 ? "camera" : "compose",
-          range_limit: rangeLimit,
-          left: problemRef.current.left,
-          right: problemRef.current.right,
-          operator: problemRef.current.operator,
-          answer: problemRef.current.answer,
-          detected_number: number,
-          wrong_attempts: wrongCount,
-          correct: true,
-        },
-      });
-      scheduleNextProblem();
-      return;
-    }
-
-    const nextAttempts = wrongAttemptsRef.current + 1;
-    wrongAttemptsRef.current = nextAttempts;
-    setWrongAttempts(nextAttempts);
-
-    if (nextAttempts >= 3) {
-      answerLockedRef.current = true;
-      setFeedback(`Đáp án là ${problemRef.current.answer}. Sang câu mới...`);
-      speakVietnamese(`Đáp án là ${problemRef.current.answer}`);
-      void recordLearningResult({
-        module_key: "math",
-        activity_key: rangeLimit === 10 ? "camera_math_10" : "compose_math_100",
-        title: `Cộng trừ phạm vi ${rangeLimit}`,
-        score: 0,
-        max_score: 100,
-        accuracy: 0,
-        time_spent_seconds: 0,
-        detail: {
-          mode: rangeLimit === 10 ? "camera" : "compose",
-          range_limit: rangeLimit,
-          left: problemRef.current.left,
-          right: problemRef.current.right,
-          operator: problemRef.current.operator,
-          answer: problemRef.current.answer,
-          detected_number: number,
-          wrong_attempts: nextAttempts,
-          correct: false,
-        },
-      });
-      scheduleNextProblem(2400);
-      return;
-    }
-
-    setFeedback(`Thử lại nhé (${nextAttempts}/3)`);
-    speakVietnamese("Thử lại nhé");
-  }
-
-  function nextProblem() {
-    if (nextProblemTimerRef.current) {
-      clearTimeout(nextProblemTimerRef.current);
-      nextProblemTimerRef.current = null;
-    }
-    setProblem(createMathProblem(rangeLimit));
-    setComposedAnswer(0);
-    setDetectedNumber(null);
-    setFeedback("Sẵn sàng");
-    setWrongAttempts(0);
-    wrongAttemptsRef.current = 0;
-    answerLockedRef.current = false;
-    resetHeldFinger();
-    setHandStatus(cameraOn ? "Giữ nguyên số ngón tay trong 3 giây" : "Bật camera rồi giơ số ngón tay");
-  }
-
-  function switchRange(nextLimit) {
-    if (nextLimit === rangeLimit) return;
-    if (nextProblemTimerRef.current) {
-      clearTimeout(nextProblemTimerRef.current);
-      nextProblemTimerRef.current = null;
-    }
-    if (nextLimit > 10) {
-      stopCamera();
-    }
-    setRangeLimit(nextLimit);
-    setProblem(createMathProblem(nextLimit));
-    setComposedAnswer(0);
-    setDetectedNumber(null);
-    setFeedback("Sẵn sàng");
-    setWrongAttempts(0);
-    wrongAttemptsRef.current = 0;
-    answerLockedRef.current = false;
-    resetHeldFinger();
-    setHandStatus(nextLimit === 10 ? "Bật camera rồi giơ số ngón tay" : "Chọn đáp án bên dưới");
   }
 
   async function startCamera() {
@@ -899,7 +846,7 @@ function MathGameMode() {
       setCameraOn(true);
       setHandStatus("Đang mở camera");
     } catch {
-      setCameraError("Không mở được camera.");
+      setCameraError("Không mở được camera. Bé vẫn bấm chọn đáp án được.");
     }
   }
 
@@ -925,110 +872,148 @@ function MathGameMode() {
     }
   }
 
+  function switchRange(nextLimit) {
+    if (nextLimit === rangeLimit) return;
+    if (nextLimit > 10) stopCamera();
+    setRangeLimit(nextLimit);
+    quiz.replay();
+  }
+
+  useEffect(() => {
+    if (quiz.finished) checkNewBadge();
+  }, [quiz.finished, checkNewBadge]);
+
+  const question = quiz.question;
+
   return (
-    <section className="activity-panel">
-      <div className="mode-tabs secondary-tabs" role="tablist" aria-label="Phạm vi làm toán">
-        <button
-          className={`mode-tab ${rangeLimit === 10 ? "active" : ""}`}
-          onClick={() => switchRange(10)}
-          role="tab"
-          aria-selected={rangeLimit === 10}
-        >
-          Phạm vi 10
-        </button>
-        <button
-          className={`mode-tab ${rangeLimit === 100 ? "active" : ""}`}
-          onClick={() => switchRange(100)}
-          role="tab"
-          aria-selected={rangeLimit === 100}
-        >
-          Phạm vi 100
-        </button>
-      </div>
+    <main className="kid-shell">
+      <KidTopBar
+        subject="num"
+        title="Số"
+        progress={{ current: quiz.index, total: quiz.total }}
+        stars={quiz.stars}
+        starBoxRef={starBoxRef}
+      />
 
-      <div className={`math-layout ${rangeLimit === 100 ? "math-layout-wide" : ""}`}>
-        <div className="problem-panel">
-          <span className="badge">Cộng trừ phạm vi {rangeLimit}</span>
-          <div className="math-expression">
-            {problem.left} {problem.operator} {problem.right} = ?
+      <div className="kid-lesson subject-num">
+        <div className="qcard">
+          <div className="qtext">
+            {question.left} {question.operator} {question.right} = ?
           </div>
-          <p className={feedback.includes("Chính xác") ? "success-text" : ""}>{feedback}</p>
-          {detectedNumber !== null ? (
-            <div className="detected-number">Số đang nhận: {detectedNumber}</div>
-          ) : null}
-          {wrongAttempts > 0 ? (
-            <div className="detected-number">Số lần sai: {wrongAttempts}/3</div>
-          ) : null}
-
-          {rangeLimit === 10 ? (
-            <div className="manual-answer-grid">
-              {answerChoices10.map((number) => (
-                <button key={number} className="chip" onClick={() => evaluateAnswer(number)}>
-                  {number}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="composed-answer-panel">
-              <CompactNumberPicker
-                label="Ghép đáp án"
-                value={composedAnswer}
-                min={0}
-                max={100}
-                onChange={setComposedAnswer}
-              />
-              <button className="btn primary compact" onClick={() => evaluateAnswer(composedAnswer)}>
-                Kiểm tra
-              </button>
-            </div>
-          )}
-
-          <button className="btn primary compact" onClick={nextProblem}>
-            Câu mới
+          <button type="button" className="qspeak" aria-label="Nghe câu hỏi" onClick={() => speakProblem(question)}>
+            🔊
           </button>
         </div>
 
+        <FeedbackBubble mood={quiz.mood} message={quiz.message} hint={quiz.hint} />
+
+        <div className="answer-grid">
+          {question.choices.map((value) => {
+            const spent = quiz.wrongValues.includes(value);
+            const isAnswer = value === question.answer;
+            const classes = [
+              "kbtn soft subject-num",
+              spent ? "is-spent is-try" : "",
+              quiz.shakeValue === value ? "is-try" : "",
+              isAnswer && quiz.mood === "happy" ? "is-ok" : "",
+              isAnswer && quiz.revealAnswer ? "is-reveal" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+
+            return (
+              <button
+                key={value}
+                type="button"
+                ref={(el) => {
+                  buttonRefs.current[value] = el;
+                }}
+                className={classes}
+                disabled={spent}
+                onClick={(event) => {
+                  answerSourceRef.current = "tap";
+                  quiz.answer(value, event.currentTarget);
+                }}
+              >
+                {value}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mode-tabs secondary-tabs" role="tablist" aria-label="Phạm vi làm toán">
+          <button
+            className={`mode-tab ${rangeLimit === 10 ? "active" : ""}`}
+            onClick={() => switchRange(10)}
+            role="tab"
+            aria-selected={rangeLimit === 10}
+          >
+            Phạm vi 10
+          </button>
+          <button
+            className={`mode-tab ${rangeLimit === 100 ? "active" : ""}`}
+            onClick={() => switchRange(100)}
+            role="tab"
+            aria-selected={rangeLimit === 100}
+          >
+            Phạm vi 100
+          </button>
+          <button type="button" className="mode-tab" onClick={onBackToLearn}>
+            Nhận biết số
+          </button>
+        </div>
+
+        {/* Camera ẩn mặc định (Mục 5.4): bấm thẻ mới mở khung camera. */}
         {rangeLimit === 10 ? (
           <div className="camera-panel">
-            <div className="camera-frame">
-              {cameraOn ? (
-                <video ref={videoRef} autoPlay playsInline muted />
-              ) : (
-                <div className="camera-placeholder">Camera</div>
-              )}
-            </div>
+            {cameraOn ? (
+              <>
+                <div className="camera-frame">
+                  <video ref={videoRef} autoPlay playsInline muted />
+                </div>
 
-            <div className="camera-status">
-              <span>{handStatus}</span>
-              {fingerCount !== null ? <strong>{fingerCount}</strong> : null}
-              <div className="hold-meter" aria-hidden="true">
-                <span style={{ width: `${Math.round(holdProgress * 100)}%` }} />
-              </div>
-            </div>
+                <div className="camera-status">
+                  <span>{handStatus}</span>
+                  {fingerCount !== null ? <strong>{fingerCount}</strong> : null}
+                  <div className="hold-meter" aria-hidden="true">
+                    <span style={{ width: `${Math.round(holdProgress * 100)}%` }} />
+                  </div>
+                </div>
 
-            <div className="camera-actions">
-              {cameraOn ? (
-                <button className="btn secondary" onClick={stopCamera}>
-                  Tắt camera
-                </button>
-              ) : (
-                <button className="btn secondary" onClick={startCamera}>
-                  Bật camera
-                </button>
-              )}
-            </div>
+                <div className="camera-actions">
+                  <button className="btn secondary" onClick={() => stopCamera()}>
+                    Tắt camera
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button type="button" className="camera-toggle-card" onClick={startCamera}>
+                <span aria-hidden="true">🖐️</span>
+                Trả lời bằng ngón tay
+              </button>
+            )}
 
-            {cameraError ? <div className="error">{cameraError}</div> : null}
+            {cameraError ? <div className="info">{cameraError}</div> : null}
           </div>
-        ) : (
-          <div className="camera-panel number-note-panel">
-            <span className="badge">Phạm vi 100</span>
-            <p>Với bài toán lớn hơn 10, bé ghép hàng chục và hàng đơn vị rồi bấm kiểm tra.</p>
-            <p>Phần giơ ngón tay vẫn dùng cho bài cộng trừ phạm vi 10.</p>
-          </div>
-        )}
+        ) : null}
+
+        <KidSwitches />
       </div>
-    </section>
+
+      {quiz.finished ? (
+        <RewardSummary
+          stars={quiz.finished.stars}
+          total={quiz.finished.total}
+          correctFirstTry={quiz.finished.correctFirstTry}
+          newBadge={newBadge}
+          onReplay={() => {
+            setNewBadge(null);
+            quiz.replay();
+          }}
+          onHome={() => router.push("/hoc-tap")}
+        />
+      ) : null}
+    </main>
   );
 }
 

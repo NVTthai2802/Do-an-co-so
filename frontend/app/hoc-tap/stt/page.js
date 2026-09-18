@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { API_URL } from "../../../lib/api";
 import { getToken } from "../../../lib/auth";
 import {
@@ -9,6 +8,8 @@ import {
   isSpeechRecognitionSupported,
   speakVietnamese,
 } from "../../../lib/speech";
+import { getTodayPassage } from "../../../lib/readingPassages";
+import KidTopBar from "../../../components/KidTopBar";
 import styles from "./STT.module.css";
 
 function ScoreCircle({ score }) {
@@ -65,11 +66,11 @@ function WaveformBars() {
 }
 
 export default function SpeechToText() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState("practice");
 
   // Practice mode state
   const [referenceText, setReferenceText] = useState("");
+  const [passageTitle, setPassageTitle] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -85,6 +86,14 @@ export default function SpeechToText() {
   const recognitionRef = useRef(null);
   const freeRecognitionRef = useRef(null);
   const [supported, setSupported] = useState(true);
+
+  // Bé không phải gõ chữ: mở sẵn "bài đọc hôm nay" do bố mẹ chọn ở
+  // /dashboard/tools (Mục 5.2). Mặc định là đoạn đầu trong kho mẫu.
+  useEffect(() => {
+    const passage = getTodayPassage();
+    setReferenceText(passage.text);
+    setPassageTitle(passage.title);
+  }, []);
 
   useEffect(() => {
     setSupported(isSpeechRecognitionSupported());
@@ -323,21 +332,9 @@ export default function SpeechToText() {
   };
 
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">Dành cho Bé</span>
-            <h1>🎤 Bé Luyện Đọc</h1>
-            <p>Đọc bài cho AI nghe và nhận đánh giá</p>
-          </div>
-          <button
-            className="btn secondary"
-            onClick={() => router.push("/hoc-tap")}
-          >
-            ← Quay lại
-          </button>
-        </div>
+    <main className="kid-shell">
+      <KidTopBar subject="rd" title="Luyện đọc" />
+      <div className="kid-lesson subject-rd">
 
         {/* Tab Navigation */}
         <div className={styles.tabs}>
@@ -372,18 +369,18 @@ export default function SpeechToText() {
             {/* Reference Text */}
             <div className={styles.referenceArea}>
               <div className={styles.referenceLabel}>
-                📝 Đoạn văn mẫu
-                <span className={styles.referenceHint}>
-                  📋 Dán từ OCR hoặc tự nhập
-                </span>
+                📖 {passageTitle || "Bài đọc hôm nay"}
+                <button
+                  type="button"
+                  className={styles.referenceHint}
+                  onClick={() => speakVietnamese(referenceText)}
+                  aria-label="Nghe cô đọc mẫu"
+                >
+                  🔊 Nghe mẫu
+                </button>
               </div>
-              <textarea
-                className={styles.referenceTextarea}
-                placeholder="Nhập đoạn văn để bé luyện đọc..."
-                value={referenceText}
-                onChange={(e) => setReferenceText(e.target.value)}
-                rows={4}
-              />
+              {/* Bé chỉ đọc, không gõ. Bố mẹ đổi bài ở Công cụ cho bé. */}
+              <p className={styles.referenceText}>{referenceText}</p>
             </div>
 
             {/* Record Section */}
@@ -613,7 +610,7 @@ export default function SpeechToText() {
             </div>
           </>
         )}
-      </section>
+      </div>
     </main>
   );
 }

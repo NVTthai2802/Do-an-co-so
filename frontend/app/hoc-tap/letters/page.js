@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import LetterFlashcard from "../../../components/LetterFlashcard";
-import KidNav from "../../../components/KidNav";
-import { recordLearningResult } from "../../../lib/learning";
+import KidTopBar from "../../../components/KidTopBar";
 import { speakVietnamese } from "../../../lib/speech";
 import styles from "./HocChu.module.css";
 
@@ -51,21 +49,6 @@ export default function HocChu() {
   const selectLetter = (letter) => {
     if (letter.letter === selectedLetter.letter) {
       speakLetter(letter);
-      void recordLearningResult({
-        module_key: "letters",
-        activity_key: "letter_explore",
-        title: `Khám phá chữ ${letter.letter}`,
-        score: 85,
-        max_score: 100,
-        accuracy: 85,
-        time_spent_seconds: 0,
-        detail: {
-          letter: letter.letter,
-          word: letter.word,
-          example: letter.example,
-          tab: activeTab,
-        },
-      });
       return;
     }
 
@@ -74,43 +57,15 @@ export default function HocChu() {
       setSelectedLetter(letter);
       setIsAnimating(false);
       speakLetter(letter);
-      void recordLearningResult({
-        module_key: "letters",
-        activity_key: "letter_explore",
-        title: `Khám phá chữ ${letter.letter}`,
-        score: 85,
-        max_score: 100,
-        accuracy: 85,
-        time_spent_seconds: 0,
-        detail: {
-          letter: letter.letter,
-          word: letter.word,
-          example: letter.example,
-          tab: activeTab,
-        },
-      });
     }, 180);
   };
 
   return (
-    <main className="dashboard-shell">
-      <section className="dashboard-card">
-        <div className="dashboard-header">
-          <div>
-            <span className="badge">Dạy chữ</span>
-            <h1>Học chữ cái</h1>
-            <p>Nhìn, nghe và lật thẻ để ghi nhớ từng chữ cái tiếng Việt.</p>
-          </div>
-          <div className="dashboard-actions">
-            <KidNav />
-            <Link href="/hoc-tap" className="btn secondary">
-              Quay lại
-            </Link>
-          </div>
-        </div>
+    <main className="kid-shell">
+      <KidTopBar subject="let" title="Chữ" />
+      <div className="kid-lesson subject-let">
 
         <div className={styles.lessonContent}>
-          <h1 className={styles.title}>🔤 Học chữ cái</h1>
 
           <div className={styles.tabBar}>
             <button
@@ -169,7 +124,7 @@ export default function HocChu() {
             <LetterFlashcard items={LETTER_ITEMS} initialLetter={selectedLetter.letter} />
           )}
         </div>
-      </section>
+      </div>
     </main>
   );
 }

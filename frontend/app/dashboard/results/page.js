@@ -54,16 +54,38 @@ function formatTimeSpent(seconds) {
   return `${total} giây`;
 }
 
-function toneClass(score) {
+// Muc 5.10 (P0) - trang thai trung thuc: ky nang chua luyen lan nao thi hien
+// "Chua hoc" mau xam, KHONG hien "0% . Do". Vi vay ca hai ham deu phai biet
+// so lan luyen chu khong chi biet diem.
+function toneClass(score, attempts) {
+  if (!attempts) return styles.toneIdle;
   if (score >= 85) return styles.toneGood;
   if (score >= 70) return styles.toneWarn;
   return styles.toneDanger;
 }
 
-function toneLabel(score) {
-  if (score >= 85) return "Xanh";
-  if (score >= 70) return "Vàng";
-  return "Đỏ";
+// Moi chip trang thai co icon + chu + mau (Muc 5.10)
+function toneLabel(score, attempts) {
+  if (!attempts) return { icon: "–", text: "Chưa học" };
+  if (score >= 85) return { icon: "✓", text: "Vững" };
+  if (score >= 70) return { icon: "↻", text: "Cần luyện" };
+  return { icon: "↻", text: "Cần luyện thêm" };
+}
+
+// Map module_key sang ten tieng Viet (Muc 5.10)
+const MODULE_NAMES = {
+  math: "Phép toán",
+  letters: "Chữ cái",
+  alphabet: "Chữ cái",
+  geometry: "Hình học",
+  shapes: "Hình học",
+  time: "Học giờ",
+  reading: "Luyện đọc",
+  documents: "Tài liệu",
+};
+
+function moduleName(key) {
+  return MODULE_NAMES[key] || key;
 }
 
 function levelLabel(score) {
@@ -121,6 +143,8 @@ function ScoreRing({ score, label }) {
         <div className={styles.ringValue}>{Math.round(safeScore)}</div>
         <div className={styles.ringLabel}>{label}</div>
       </div>
+      {/* Muc 5.10: vong tron diem phai co nhan ro */}
+      <div className={styles.ringCaption}>Chỉ số học tập</div>
     </div>
   );
 }
@@ -137,25 +161,33 @@ function SummaryCard({ label, value, hint, tone = "neutral" }) {
 
 function SkillCard({ item }) {
   const score = Math.max(0, Math.min(100, Number(item.score) || 0));
+  const attempts = Number(item.attempts) || 0;
+  const tone = toneLabel(score, attempts);
+
   return (
-    <article className={`${styles.skillCard} ${toneClass(score)}`}>
+    <article className={`${styles.skillCard} ${toneClass(score, attempts)}`}>
       <div className={styles.skillTop}>
         <div>
           <span className={styles.skillLabel}>{item.label}</span>
           <div className={styles.skillMeta}>
-            {item.attempts || 0} lần luyện
+            {attempts ? `${attempts} lần luyện` : "Bé chưa luyện phần này"}
           </div>
         </div>
-        <div className={styles.skillScore}>{formatPercent(score)}</div>
+        {/* Chua luyen lan nao thi khong hien con so 0% */}
+        <div className={styles.skillScore}>{attempts ? formatPercent(score) : "–"}</div>
       </div>
 
       <div className={styles.skillBarTrack} aria-hidden="true">
-        <span className={styles.skillBarFill} style={{ width: `${score}%` }} />
+        <span className={styles.skillBarFill} style={{ width: `${attempts ? score : 0}%` }} />
       </div>
 
       <div className={styles.skillFooter}>
-        <span className={styles.skillLevel}>{toneLabel(score)}</span>
-        <span className={styles.skillHint}>Mức hiện tại</span>
+        <span className={styles.skillLevel}>
+          <span aria-hidden="true">{tone.icon}</span> {tone.text}
+        </span>
+        <span className={styles.skillHint}>
+          {attempts ? "Mức hiện tại" : "Chưa có dữ liệu"}
+        </span>
       </div>
     </article>
   );
@@ -297,6 +329,8 @@ export default function LearningResultsDashboard() {
   const skills = dashboard?.skill_statistics || [];
   const ali = dashboard?.ali || { score: 0, label: "Chưa có dữ liệu", note: "", components: [] };
   const cameraResults = dashboard?.camera_results || { summary: {}, items: [], insight: "" };
+  // Coi la "co dung camera" khi that su co it nhat mot lan thu.
+  const hasCameraData = (cameraResults.items || []).some((item) => Number(item.attempts) > 0);
   const readingResults = dashboard?.reading_results || { summary: {}, wrong_words: [], insight: "", documents: [] };
   const badges = dashboard?.badges || [];
   const recommendations = dashboard?.recommendations || [];
@@ -349,8 +383,9 @@ export default function LearningResultsDashboard() {
           <span className="badge">Dành cho phụ huynh</span>
           <h1>Kết quả học tập</h1>
           <p>
-            Báo cáo này tổng hợp tiến độ học chữ, học số, hình học, phép toán, luyện đọc
-            và các kết quả AI camera để phụ huynh nhìn thấy xu hướng học tập của bé theo tuần.
+            Báo cáo này tổng hợp tiến độ học chữ, học số, hình học, phép toán và
+            luyện đọc{hasCameraData ? ", cùng kết quả nhận diện bằng camera" : ""} để
+            bố mẹ nhìn thấy xu hướng học tập của bé theo tuần.
           </p>
 
           <div className={styles.heroMeta}>
@@ -399,9 +434,23 @@ export default function LearningResultsDashboard() {
             <h2>Biểu đồ tiến độ theo tuần</h2>
             <p>Đường biểu diễn thể hiện điểm trung bình của từng tuần gần nhất.</p>
           </div>
+          {/* Muc 5.10 (P0): tuan truoc khong co du lieu thi ghi "Tuan dau tien",
+              khong hien "+xx diem" tu con so khong co that. */}
           <div className={styles.trendMeta}>
-            <strong>{trendDelta >= 0 ? "+" : ""}{trendDelta} điểm</strong>
-            <span>So với tuần trước</span>
+            {previousTrend ? (
+              <>
+                <strong>
+                  {trendDelta >= 0 ? "+" : ""}
+                  {trendDelta} điểm
+                </strong>
+                <span>So với tuần trước</span>
+              </>
+            ) : (
+              <>
+                <strong>Tuần đầu tiên</strong>
+                <span>Chưa có tuần trước để so sánh</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -414,10 +463,11 @@ export default function LearningResultsDashboard() {
               aria-label="Biểu đồ tiến độ học tập"
             >
               <defs>
+                {/* Muc 5.10: dung dung mau cua cac mon (Chu -> Hinh -> So) */}
                 <linearGradient id="trendLine" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#5e74f6" />
-                  <stop offset="50%" stopColor="#2dd4bf" />
-                  <stop offset="100%" stopColor="#f97316" />
+                  <stop offset="0%" stopColor="var(--let-700)" />
+                  <stop offset="50%" stopColor="var(--shp-700)" />
+                  <stop offset="100%" stopColor="var(--brand-700)" />
                 </linearGradient>
                 <linearGradient id="trendFill" x1="0%" y1="0%" x2="0%" y2="1%">
                   <stop offset="0%" stopColor="rgba(94, 116, 246, 0.28)" />
@@ -450,7 +500,7 @@ export default function LearningResultsDashboard() {
 
               {trendGeometry.plotPoints.map((point) => (
                 <g key={point.label}>
-                  <circle cx={point.x} cy={point.y} r="6" className={styles.chartDot} />
+                  <circle cx={point.x} cy={point.y} r="8" className={styles.chartDot} />
                   <circle cx={point.x} cy={point.y} r="12" className={styles.chartHalo} />
                 </g>
               ))}
@@ -474,11 +524,11 @@ export default function LearningResultsDashboard() {
             </div>
             <div className={styles.asideCard}>
               <span className={styles.asideLabel}>Tuần trước</span>
-              <strong>{formatPercent(previousTrend?.score || 0)}</strong>
-              <p>{previousTrend?.range_label || "Chưa đủ dữ liệu"}</p>
+              <strong>{previousTrend ? formatPercent(previousTrend.score) : "–"}</strong>
+              <p>{previousTrend?.range_label || "Tuần đầu tiên"}</p>
             </div>
             <div className={styles.asideCardAccent}>
-              <span className={styles.asideLabel}>Nhận xét của AI</span>
+              <span className={styles.asideLabel}>Nhận xét</span>
               <p>{ali.note}</p>
             </div>
           </aside>
@@ -491,7 +541,8 @@ export default function LearningResultsDashboard() {
             <span className={styles.sectionLabel}>Kỹ năng</span>
             <h2>Thống kê theo từng kỹ năng</h2>
             <p>
-              Màu xanh là kỹ năng đang vững, vàng là cần củng cố thêm, đỏ là nên luyện lại.
+              ✓ Vững · ↻ Cần luyện · – Chưa học. Kỹ năng chưa luyện lần nào sẽ
+              để trống thay vì chấm 0 điểm.
             </p>
           </div>
         </div>
@@ -503,17 +554,19 @@ export default function LearningResultsDashboard() {
       </section>
 
       <section className={styles.dualGrid}>
+        {/* Nghiem thu Giai doan 5: chi hien khoi nay khi be that su da dung
+            camera. Tai khoan moi khong thay "Ket qua AI camera" trong. */}
+        {hasCameraData ? (
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
             <div>
-              <span className={styles.sectionLabel}>AI Camera</span>
-              <h2>Kết quả AI camera</h2>
+              <span className={styles.sectionLabel}>Camera</span>
+              <h2>Kết quả nhận diện bằng camera</h2>
               <p>Đánh giá từ các bài nhận diện hình và phép toán bằng camera.</p>
             </div>
           </div>
 
-          {cameraResults.items?.length ? (
-            <div className={styles.cameraGrid}>
+          <div className={styles.cameraGrid}>
               {cameraResults.items.map((item) => (
                 <article key={item.label} className={styles.cameraItem}>
                   <div className={styles.cameraTop}>
@@ -532,18 +585,16 @@ export default function LearningResultsDashboard() {
                   </div>
                 </article>
               ))}
-            </div>
-          ) : (
-            <div className={styles.emptyState}>
-              Chưa có dữ liệu AI camera. Hãy thử bài Học hình hoặc phép toán bằng camera.
-            </div>
-          )}
-
-          <div className={styles.asideCardAccent}>
-            <span className={styles.asideLabel}>Nhận xét tự động</span>
-            <p>{cameraResults.insight}</p>
           </div>
+
+          {cameraResults.insight ? (
+            <div className={styles.asideCardAccent}>
+              <span className={styles.asideLabel}>Nhận xét tự động</span>
+              <p>{cameraResults.insight}</p>
+            </div>
+          ) : null}
         </section>
+        ) : null}
 
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
@@ -592,7 +643,7 @@ export default function LearningResultsDashboard() {
           <div className={styles.reportList}>
             {dashboard?.weekly_report?.map((week, index) => {
               const previousWeek = dashboard.weekly_report[index - 1];
-              const delta = previousWeek ? Math.round(week.score - previousWeek.score) : 0;
+              const delta = previousWeek ? Math.round(week.score - previousWeek.score) : null;
               return (
                 <article key={week.label} className={styles.reportItem}>
                   <div>
@@ -601,7 +652,11 @@ export default function LearningResultsDashboard() {
                   </div>
                   <div className={styles.reportScore}>
                     <strong>{formatPercent(week.score)}</strong>
-                    <span>{delta >= 0 ? "+" : ""}{delta} điểm</span>
+                    <span>
+                      {delta === null
+                        ? "Tuần đầu tiên"
+                        : `${delta >= 0 ? "+" : ""}${delta} điểm`}
+                    </span>
                   </div>
                 </article>
               );
@@ -651,7 +706,7 @@ export default function LearningResultsDashboard() {
               <article key={result.id} className={styles.timelineItem}>
                 <div>
                   <strong>{result.title}</strong>
-                  <span>{result.module_key}</span>
+                  <span>{moduleName(result.module_key)}</span>
                 </div>
                 <div className={styles.timelineMeta}>
                   <strong>{formatPercent(result.score)}</strong>

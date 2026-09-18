@@ -20,19 +20,19 @@
 }
 
 .statusReady {
-  background: #eef9f2;
-  color: #2d6b4f;
+  background: var(--ok-50);
+  color: var(--ok-700);
 }
 
 .statusPlaying {
-  background: linear-gradient(135deg, #fff0e7 0%, #ffe8db 100%);
-  color: var(--primary-dark);
+  background: linear-gradient(135deg, var(--brand-50) 0%, var(--brand-50) 100%);
+  color: var(--brand-700);
   animation: statusGlow 2s ease-in-out infinite;
 }
 
 .statusPaused {
-  background: #f0f4ff;
-  color: #5e74f6;
+  background: var(--let-50);
+  color: var(--let-700);
 }
 
 @keyframes statusGlow {
@@ -44,7 +44,7 @@
 .textInputArea {
   position: relative;
   border-radius: 22px;
-  background: linear-gradient(135deg, #fff 0%, #fffcfa 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface) 100%);
   border: 1.5px solid rgba(26, 24, 21, 0.08);
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(100, 80, 70, 0.05);
@@ -69,7 +69,7 @@
 .textInputLabel {
   font-weight: 800;
   font-size: 0.95rem;
-  color: var(--text);
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -84,7 +84,7 @@
   font-family: inherit;
   font-size: 1rem;
   line-height: 1.75;
-  color: var(--text);
+  color: var(--ink);
   resize: vertical;
 }
 
@@ -93,7 +93,7 @@
 }
 
 .textInput::placeholder {
-  color: var(--muted);
+  color: var(--ink-soft);
   font-style: italic;
 }
 
@@ -104,14 +104,14 @@
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(255, 240, 231, 0.7);
-  color: var(--muted);
+  color: var(--ink-soft);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .charCountActive {
-  color: var(--primary-dark);
-  background: #fff0e7;
+  color: var(--brand-700);
+  background: var(--brand-50);
 }
 
 /* ─── Player Controls ─── */
@@ -121,7 +121,7 @@
   gap: 16px;
   padding: 18px 24px;
   border-radius: 22px;
-  background: linear-gradient(135deg, #fffaf7 0%, #fff6f0 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--brand-50) 100%);
   border: 1.5px solid rgba(26, 24, 21, 0.06);
   box-shadow: 0 4px 16px rgba(100, 80, 70, 0.05);
   flex-wrap: wrap;
@@ -204,15 +204,15 @@
   place-items: center;
   border: 1.5px solid rgba(26, 24, 21, 0.08);
   border-radius: 14px;
-  background: #fff;
-  color: var(--text);
+  background: var(--surface);
+  color: var(--ink);
   font-size: 1.15rem;
   cursor: pointer;
   transition: all 0.25s ease;
 }
 
 .controlButton:hover:not(:disabled) {
-  background: #fff8f5;
+  background: var(--surface);
   border-color: rgba(255, 168, 160, 0.3);
   box-shadow: 0 4px 12px rgba(100, 80, 70, 0.08);
   transform: translateY(-1px);
@@ -230,7 +230,7 @@
   gap: 6px;
   padding: 5px;
   border-radius: 16px;
-  background: #fff;
+  background: var(--surface);
   border: 1.5px solid rgba(26, 24, 21, 0.06);
   margin-left: auto;
 }
@@ -240,7 +240,7 @@
   border: none;
   border-radius: 12px;
   background: transparent;
-  color: var(--text);
+  color: var(--ink);
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -276,7 +276,7 @@
 .voiceLabel {
   font-weight: 700;
   font-size: 0.88rem;
-  color: var(--text);
+  color: var(--ink);
   white-space: nowrap;
   display: flex;
   align-items: center;
@@ -292,7 +292,7 @@
   background: var(--surface);
   font-family: inherit;
   font-size: 0.88rem;
-  color: var(--text);
+  color: var(--ink);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -312,14 +312,14 @@
   height: 48px;
   padding: 8px 20px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #fff0e7 0%, #ffe8db 100%);
+  background: linear-gradient(135deg, var(--brand-50) 0%, var(--brand-50) 100%);
   overflow: hidden;
 }
 
 .waveBar {
   width: 6px;
   border-radius: 999px;
-  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(180deg, var(--brand-400) 0%, var(--brand-700) 100%);
   transition: height 0.15s ease;
 }
 
@@ -349,13 +349,13 @@
 .textDisplay {
   padding: 22px;
   border-radius: 22px;
-  background: linear-gradient(135deg, #fff 0%, #fffcfa 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface) 100%);
   border: 1.5px solid rgba(26, 24, 21, 0.06);
   box-shadow: 0 4px 16px rgba(100, 80, 70, 0.04);
   min-height: 120px;
   line-height: 2;
   font-size: 1.05rem;
-  color: var(--text);
+  color: var(--ink);
 }
 
 .textDisplayHeader {
@@ -364,7 +364,7 @@
   gap: 6px;
   font-weight: 800;
   font-size: 0.9rem;
-  color: var(--text);
+  color: var(--ink);
   margin-bottom: 12px;
 }
 
@@ -381,7 +381,7 @@
   gap: 6px;
   font-weight: 800;
   font-size: 0.9rem;
-  color: var(--text);
+  color: var(--ink);
   margin-bottom: 12px;
 }
 
@@ -400,8 +400,8 @@
 }
 
 .wordHighlight {
-  background: linear-gradient(135deg, #fff8d6 0%, #fff0b3 100%);
-  color: #5a4a00;
+  background: linear-gradient(135deg, var(--try-50) 0%, var(--try-50) 100%);
+  color: var(--try-700);
   font-weight: 700;
   border-radius: 8px;
   padding: 2px 6px;
@@ -417,7 +417,7 @@
   gap: 8px;
   padding: 32px;
   text-align: center;
-  color: var(--muted);
+  color: var(--ink-soft);
   font-size: 0.92rem;
 }
 
@@ -430,7 +430,7 @@
 .tipCard {
   padding: 20px 24px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #f0f7ff 0%, #e8f0ff 100%);
+  background: linear-gradient(135deg, var(--let-50) 0%, var(--let-50) 100%);
   border: 1.5px solid rgba(181, 200, 255, 0.3);
   margin-top: 8px;
 }
@@ -438,7 +438,7 @@
 .tipTitle {
   font-weight: 800;
   font-size: 0.95rem;
-  color: var(--text);
+  color: var(--ink);
   margin-bottom: 10px;
   display: flex;
   align-items: center;
@@ -451,7 +451,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: var(--muted);
+  color: var(--ink-soft);
   font-size: 0.88rem;
   line-height: 1.6;
 }

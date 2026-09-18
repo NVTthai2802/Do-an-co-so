@@ -22,6 +22,9 @@
   --ok-50: #E6F8EC;  --ok-400: #22C55E;  --ok-700: #15803D;
   --try-50: #FFF4DB; --try-400: #FBBF24; --try-700: #92400E;
 
+  /* ── Trạng thái chưa mở (khoá) ───────────────────────────── */
+  --lock-50: #F1ECE3; --lock-400: #E2D9CB; --lock-700: #D6CBBB;
+
   /* ── Khu phụ huynh ───────────────────────────────────────── */
   --parent-primary: #1D4ED8;   /* chữ trắng trên nền này: 6,7:1 */
 
@@ -36,18 +39,8 @@
   --font-display: var(--font-baloo), "Nunito", system-ui, sans-serif;
   --font-body: var(--font-nunito), system-ui, "Segoe UI", sans-serif;
 
-  /* ── Alias tương thích ngược (Giai đoạn 1, Mục 7 bước 2) ──
-     Giữ cho các file chưa chuyển sang token mới không bị vỡ.
-     Sẽ gỡ dần ở Giai đoạn 4 khi thay hết mã màu viết cứng.     */
-  --text: var(--ink);
-  --muted: var(--ink-soft);
-  --primary: var(--brand-400);
-  --primary-dark: var(--brand-700);
-  --accent: var(--let-400);
-  --accent-2: var(--shp-400);
-  --panel: var(--surface);
-  --shadow: var(--shadow-1);
-  --radius: var(--r-lg);
+  /* Alias tương thích ngược của Giai đoạn 1 đã gỡ ở Giai đoạn 4:
+     mọi file nay dùng thẳng token ở trên. */
 }
 
 * {
@@ -444,14 +437,14 @@ a {
 
 /* The chua mo (Phong huy hieu lam o Giai doan 6) */
 .kid-card.locked {
-  background: #F1ECE3;
-  box-shadow: 0 6px 0 #D6CBBB;
+  background: var(--lock-50);
+  box-shadow: 0 6px 0 var(--lock-700);
   cursor: default;
 }
 
 .kid-card.locked .kid-card-icon {
-  background: #E2D9CB;
-  box-shadow: 0 5px 0 #D6CBBB;
+  background: var(--lock-400);
+  box-shadow: 0 5px 0 var(--lock-700);
   filter: grayscale(1);
 }
 
@@ -599,7 +592,7 @@ input {
 .section-card p,
 .dashboard-header p,
 .field-hint {
-  color: var(--muted);
+  color: var(--ink-soft);
   line-height: 1.6;
 }
 
@@ -735,9 +728,9 @@ input {
 
 .gate-card {
   width: min(420px, 100%);
-  background: var(--panel);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
   padding: 28px 24px;
 }
 
@@ -746,7 +739,7 @@ input {
 }
 
 .gate-card p {
-  color: var(--muted);
+  color: var(--ink-soft);
   margin: 0 0 4px;
 }
 
@@ -778,25 +771,25 @@ input {
   place-items: center;
   font-weight: 800;
   font-size: 2rem;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-1);
   transform: rotate(-6deg);
 }
 
 .number-card {
-  background: #fff0d9;
+  background: var(--num-50);
   top: 28px;
   left: 20px;
 }
 
 .letter-card {
-  background: #e8f5ff;
+  background: var(--let-50);
   top: 90px;
   right: 18px;
   transform: rotate(8deg);
 }
 
 .shape-card {
-  background: #eef9f2;
+  background: var(--shp-50);
   bottom: 12px;
   left: 90px;
 }
@@ -871,6 +864,9 @@ input {
 
 .error {
   margin-top: 12px;
+  /* Ngoại lệ có chủ ý: trang Đăng nhập / Đăng ký là của NGƯỜI LỚN nên được
+     dùng đỏ hồng cho báo lỗi (Mục 5.1). Quy tắc "không đỏ" chỉ áp cho khu
+     của bé. Cặp màu này đạt 7,24:1. */
   color: #9F1239;
   background: #FFF0F3;
   padding: 12px 14px;
@@ -1006,7 +1002,7 @@ input {
 
 .lesson-card p {
   margin: 0;
-  color: var(--muted);
+  color: var(--ink-soft);
   font-size: 0.95rem;
   line-height: 1.5;
 }
@@ -1082,34 +1078,34 @@ input {
   border-radius: 30px;
   font-size: 3rem;
   font-weight: 800;
-  background: #fff;
+  background: var(--surface);
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.04);
 }
 
 .shape-preview {
-  background: #eef7ff;
+  background: var(--shp-50);
   font-size: 1.2rem;
 }
 
 .shape-preview.circle {
   border-radius: 999px;
-  background: #ffefd6;
+  background: var(--shp-50);
 }
 
 .shape-preview.square {
-  background: #d7f2ff;
+  background: var(--shp-50);
 }
 
 .shape-preview.triangle {
-  background: #e3f8e8;
+  background: var(--shp-50);
   clip-path: polygon(50% 10%, 92% 88%, 8% 88%);
-  color: #37593e;
+  color: var(--shp-700);
 }
 
 .shape-preview.rectangle {
   width: 160px;
   height: 100px;
-  background: #f0e4ff;
+  background: var(--shp-50);
 }
 
 .letter-illustration {
@@ -1117,7 +1113,7 @@ input {
   height: auto;
   border-radius: 18px;
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.04);
-  background: #fff;
+  background: var(--surface);
 }
 
 .two-col {
@@ -1237,7 +1233,7 @@ input {
 }
 
 .compact-number-group > span {
-  color: var(--muted);
+  color: var(--ink-soft);
   font-size: 0.86rem;
   font-weight: 900;
 }
@@ -1293,7 +1289,7 @@ input {
 }
 
 .object-empty {
-  color: var(--muted);
+  color: var(--ink-soft);
   font-size: 1rem;
   font-weight: 800;
 }
@@ -1320,7 +1316,7 @@ input {
   display: grid;
   place-items: center;
   border-radius: 30px;
-  background: #fff;
+  background: var(--surface);
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.04);
 }
 
@@ -1404,7 +1400,7 @@ input {
 
 .number-note-panel {
   align-content: center;
-  color: var(--muted);
+  color: var(--ink-soft);
   line-height: 1.6;
 }
 
@@ -1413,8 +1409,8 @@ input {
   width: 100%;
   overflow: hidden;
   border-radius: 22px;
-  background: #1f2933;
-  border: 3px solid #fff;
+  background: var(--ink);
+  border: 3px solid var(--surface);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
@@ -1433,7 +1429,7 @@ input {
 .camera-placeholder {
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--surface);
   font-size: 1.4rem;
   font-weight: 800;
 }
@@ -1479,7 +1475,7 @@ input {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #57c7a3, #2563eb);
+  background: linear-gradient(90deg, var(--ok-400), var(--let-700));
   transition: width 0.18s ease;
 }
 
@@ -2032,4 +2028,57 @@ input {
 
 .camera-toggle-card span[aria-hidden="true"] {
   font-size: 1.8rem;
+}
+
+/* ═══ GIAI ĐOẠN 4 – Từng bài học ═══════════════════════════════ */
+
+/* Mục 5.4 – lưới số 0–9 / số tròn chục, nút 76px */
+.digit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--tap), 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.digit-grid .kbtn {
+  width: 100%;
+  font-size: 2rem;
+}
+
+/* Ô đang chọn: tô đặc màu của bài, chữ --ink (không bao giờ chữ trắng) */
+.kbtn.is-picked {
+  background: var(--c400);
+  box-shadow: 0 6px 0 var(--c700);
+  color: var(--ink);
+}
+
+/* Mục 5.4 – khung số đang chọn, chữ số khoảng 120px */
+.number-spotlight .big-number {
+  width: auto;
+  min-width: 168px;
+  height: auto;
+  padding: 8px 24px;
+  border-radius: var(--r-lg);
+  background: var(--c50, var(--num-50));
+  box-shadow: inset 0 0 0 3px var(--c400, var(--num-400));
+  color: var(--ink);
+  font: 800 120px/1.1 var(--font-display);
+}
+
+@media (max-width: 560px) {
+  .number-spotlight .big-number {
+    min-width: 120px;
+    font-size: 88px;
+  }
+}
+
+.number-spotlight .object-row {
+  color: var(--c700, var(--num-700));
+}
+
+/* Bộ icon hình học dùng chung (Mục 5.6) */
+.shape-icon {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }

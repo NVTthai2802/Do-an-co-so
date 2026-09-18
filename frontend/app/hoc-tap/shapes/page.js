@@ -4,159 +4,76 @@ import { useState } from "react";
 import AirDrawActivity from "../../../components/AirDrawActivity";
 import KidTopBar from "../../../components/KidTopBar";
 import { speakVietnamese } from "../../../lib/speech";
+import ShapeIcon from "../../../components/ShapeIcon";
 import styles from "./HocHinh.module.css";
 
+// Mục 5.6: mỗi hình chỉ còn id, tên và mô tả. Hình vẽ lấy từ bộ SVG chung
+// trong components/ShapeIcon.js (cùng nét, cùng khung, tô màu của bài Hình),
+// nên không còn mã màu riêng cho từng hình và không trộn emoji.
+//
+// group "hinh" = hình phẳng; group "net" = nét vẽ.
+// "Đường thẳng" giữ lại (đã chốt ở Mục 8, câu 4) nhưng xếp riêng vào nhóm Nét.
 const SHAPES = [
   {
     id: "tron",
+    group: "hinh",
     name: "Hình Tròn",
-    emoji: "⭕",
-    color: "#ef4444",
     desc: "Không có cạnh, không có góc. Như mặt trăng, quả bóng!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <circle cx="50" cy="50" r="42" fill="none" stroke="#ef4444" strokeWidth="6" />
-      </svg>
-    ),
   },
   {
     id: "vuong",
+    group: "hinh",
     name: "Hình Vuông",
-    emoji: "🟥",
-    color: "#3b82f6",
     desc: "4 cạnh bằng nhau, 4 góc vuông. Như ô gạch, hộp quà!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <rect x="14" y="14" width="72" height="72" fill="none" stroke="#3b82f6" strokeWidth="6" />
-      </svg>
-    ),
   },
   {
     id: "tamgiac",
+    group: "hinh",
     name: "Hình Tam Giác",
-    emoji: "🔺",
-    color: "#f59e0b",
     desc: "3 cạnh, 3 góc. Như núi, mái nhà, pizza!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <polygon points="50,10 92,88 8,88" fill="none" stroke="#f59e0b" strokeWidth="6" />
-      </svg>
-    ),
   },
   {
     id: "chunhat",
+    group: "hinh",
     name: "Hình Chữ Nhật",
-    emoji: "▬",
-    color: "#10b981",
     desc: "4 cạnh, 2 cặp cạnh bằng nhau. Như cửa sổ, sách vở!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <rect x="8" y="26" width="84" height="48" fill="none" stroke="#10b981" strokeWidth="6" />
-      </svg>
-    ),
   },
   {
-    id: "duong_thang",
-    name: "Đường Thẳng",
-    emoji: "━",
-    color: "#0ea5e9",
-    desc: "Một nét đi thẳng từ điểm này đến điểm kia. Như thước kẻ, con đường!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <line x1="14" y1="50" x2="86" y2="50" stroke="#0ea5e9" strokeWidth="8" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "thayap",
+    id: "thoi",
+    group: "hinh",
     name: "Hình Thoi",
-    emoji: "🔷",
-    color: "#8b5cf6",
     desc: "4 cạnh bằng nhau nhưng góc không vuông. Như viên kim cương!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <polygon points="50,8 90,50 50,92 10,50" fill="none" stroke="#8b5cf6" strokeWidth="6" />
-      </svg>
-    ),
   },
   {
     id: "luc",
+    group: "hinh",
     name: "Hình Lục Giác",
-    emoji: "⬡",
-    color: "#ec4899",
     desc: "6 cạnh bằng nhau. Như tổ ong, sàn gỗ lục giác!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <polygon
-          points="50,6 90,28 90,72 50,94 10,72 10,28"
-          fill="none"
-          stroke="#ec4899"
-          strokeWidth="6"
-        />
-      </svg>
-    ),
   },
   {
     id: "sao",
+    group: "hinh",
     name: "Hình Ngôi Sao",
-    emoji: "⭐",
-    color: "#f97316",
     desc: "5 cánh nhọn. Như sao trên bầu trời đêm!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <polygon
-          points="50,6 61,38 96,38 68,58 79,90 50,70 21,90 32,58 4,38 39,38"
-          fill="none"
-          stroke="#f97316"
-          strokeWidth="5"
-        />
-      </svg>
-    ),
   },
   {
     id: "trai_tim",
+    group: "hinh",
     name: "Hình Trái Tim",
-    emoji: "❤️",
-    color: "#e11d48",
     desc: "Biểu tượng của tình yêu và sự quan tâm!",
-    svg: (
-      <svg viewBox="0 0 100 100" width="120" height="120">
-        <path
-          d="M50 85 C50 85 10 58 10 35 C10 20 22 10 35 14 C42 16 50 24 50 24 C50 24 58 16 65 14 C78 10 90 20 90 35 C90 58 50 85 50 85Z"
-          fill="none"
-          stroke="#e11d48"
-          strokeWidth="5"
-        />
-      </svg>
-    ),
+  },
+  {
+    id: "duong_thang",
+    group: "net",
+    name: "Đường Thẳng",
+    desc: "Một nét đi thẳng từ điểm này đến điểm kia. Như thước kẻ, con đường!",
   },
 ];
 
-function setupTemplateStroke(ctx, width) {
-  ctx.strokeStyle = "#fff";
-  ctx.fillStyle = "#fff";
-  ctx.lineWidth = Math.max(8, width * 0.08);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-}
-
-function drawStarPath(ctx, width, height) {
-  const cx = width / 2;
-  const cy = height / 2;
-  const outer = Math.min(width, height) * 0.34;
-  const inner = outer * 0.45;
-  ctx.beginPath();
-  for (let index = 0; index < 10; index += 1) {
-    const radius = index % 2 === 0 ? outer : inner;
-    const angle = -Math.PI / 2 + (index * Math.PI) / 5;
-    const x = cx + Math.cos(angle) * radius;
-    const y = cy + Math.sin(angle) * radius;
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-  ctx.stroke();
-}
+const SHAPE_GROUPS = [
+  { id: "hinh", label: "Hình", items: SHAPES.filter((s) => s.group === "hinh") },
+  { id: "net", label: "Nét", items: SHAPES.filter((s) => s.group === "net") },
+];
 
 function drawShapeTemplate(id) {
   return (ctx, width, height) => {
@@ -216,14 +133,15 @@ function drawShapeTemplate(id) {
   };
 }
 
-const CAMERA_SHAPE_IDS = ["tron", "vuong", "tamgiac", "sao", "duong_thang", "luc"];
+// Đường thẳng dễ nhất nên đặt đầu tiên, làm bài khởi động cho vẽ trên không
+// (Mục 5.6).
+const CAMERA_SHAPE_IDS = ["duong_thang", "tron", "vuong", "tamgiac", "luc", "sao"];
 
-const CAMERA_SHAPES = SHAPES.filter((shape) => CAMERA_SHAPE_IDS.includes(shape.id)).map((shape) => ({
+const CAMERA_SHAPES = CAMERA_SHAPE_IDS.map((id) => SHAPES.find((shape) => shape.id === id)).map((shape) => ({
   id: shape.id,
   label: shape.name,
   speech: shape.name.toLowerCase(),
-  color: shape.color,
-  preview: shape.svg,
+  preview: <ShapeIcon id={shape.id} size={120} />,
   aliases: [
     shape.name,
     shape.name.replace("Hình ", ""),
@@ -266,7 +184,6 @@ export default function HocHinh() {
       <div className="kid-lesson subject-shp">
 
         <div className={styles.lessonContent}>
-      <h1 className={styles.title}>🔷 Học Hình Dạng</h1>
 
       {/* Tab bar */}
       <div className={styles.tabBar}>
@@ -288,41 +205,44 @@ export default function HocHinh() {
       {activeTab === "hoc" && (
         <div className={styles.learnSection}>
           {/* Shape grid */}
-          <div className={styles.shapeGrid}>
-            {SHAPES.map((shape) => (
-              <button
-                key={shape.id}
-                className={`${styles.shapeBtn} ${
-                  selectedShape.id === shape.id ? styles.shapeBtnActive : ""
-                }`}
-                onClick={() => selectShape(shape)}
-                style={{
-                  "--shape-color": shape.color,
-                  borderColor:
-                    selectedShape.id === shape.id ? shape.color : undefined,
-                }}
-              >
-                <span className={styles.shapeEmoji}>{shape.emoji}</span>
-                <span className={styles.shapeBtnName}>{shape.name.replace("Hình ", "")}</span>
-              </button>
-            ))}
-          </div>
+          {SHAPE_GROUPS.map((group) => (
+            <div key={group.id} className={styles.shapeGroup}>
+              <h3 className={styles.shapeGroupLabel}>{group.label}</h3>
+              <div className={styles.shapeGrid}>
+                {group.items.map((shape) => (
+                  <button
+                    key={shape.id}
+                    type="button"
+                    className={`${styles.shapeBtn} ${
+                      selectedShape.id === shape.id ? styles.shapeBtnActive : ""
+                    }`}
+                    onClick={() => selectShape(shape)}
+                    aria-pressed={selectedShape.id === shape.id}
+                  >
+                    <ShapeIcon id={shape.id} size={56} />
+                    <span className={styles.shapeBtnName}>
+                      {shape.name.replace("Hình ", "")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
 
           {/* Detail card */}
-          <div
-            className={`${styles.card} ${isAnimating ? styles.cardFade : ""}`}
-            style={{ "--shape-color": selectedShape.color }}
-          >
-            <div className={styles.svgArea}>{selectedShape.svg}</div>
+          <div className={`${styles.card} ${isAnimating ? styles.cardFade : ""}`}>
+            <div className={styles.svgArea}>
+              <ShapeIcon id={selectedShape.id} size={160} title={selectedShape.name} />
+            </div>
             <div className={styles.shapeName}>{selectedShape.name}</div>
             <div className={styles.shapeDesc}>{selectedShape.desc}</div>
-            <button className="btn primary compact" onClick={() => speakShape(selectedShape)}>
-              Nghe phát âm
+            <button
+              type="button"
+              className="kbtn subject-shp"
+              onClick={() => speakShape(selectedShape)}
+            >
+              🔊 Nghe
             </button>
-
-            <div className={styles.emojiRow}>
-              <span className={styles.shapeEmojiLarge}>{selectedShape.emoji}</span>
-            </div>
           </div>
         </div>
       )}

@@ -505,11 +505,14 @@ function NumberReadingMode() {
 
       {subMode === "digits" ? (
         <>
-          <div className="chip-grid number-chip-grid">
+          {/* Mục 5.4: lưới số 0–9 dùng nút .kbtn cỡ 76px, không dùng chip nhỏ */}
+          <div className="digit-grid">
             {digits.map((number) => (
               <button
                 key={number}
-                className={`chip ${selectedDigit === number ? "active" : ""}`}
+                type="button"
+                className={`kbtn soft subject-num ${selectedDigit === number ? "is-picked" : ""}`}
+                aria-pressed={selectedDigit === number}
                 onClick={() => selectDigit(number)}
               >
                 {number}
@@ -522,11 +525,13 @@ function NumberReadingMode() {
 
       {subMode === "tens" ? (
         <>
-          <div className="chip-grid number-chip-grid">
+          <div className="digit-grid">
             {roundTens.map((number) => (
               <button
                 key={number}
-                className={`chip ${selectedTen === number ? "active" : ""}`}
+                type="button"
+                className={`kbtn soft subject-num ${selectedTen === number ? "is-picked" : ""}`}
+                aria-pressed={selectedTen === number}
                 onClick={() => selectTen(number)}
               >
                 {number}
@@ -592,7 +597,8 @@ function NumberSpotlight({ number, objectCount }) {
   const visibleObjects = Math.min(objectCount, 30);
 
   return (
-    <div className="spotlight number-spotlight">
+    <div className="spotlight number-spotlight subject-num">
+      {/* Mục 5.4: số đang chọn cỡ ~120px, bên dưới là đồ vật để đếm và nút loa lớn */}
       <div className="big-number">{number}</div>
       <p>
         Số <strong>{readNumberVietnamese(number)}</strong>
@@ -604,8 +610,8 @@ function NumberSpotlight({ number, objectCount }) {
           <span className="object-empty">0 đồ vật</span>
         )}
       </div>
-      <button className="btn primary compact" onClick={() => speakNumber(number)}>
-        Nghe phát âm
+      <button type="button" className="kbtn subject-num" onClick={() => speakNumber(number)}>
+        🔊 Nghe
       </button>
     </div>
   );

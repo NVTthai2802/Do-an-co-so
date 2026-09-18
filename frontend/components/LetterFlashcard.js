@@ -76,7 +76,6 @@ export default function LetterFlashcard({ items = [], initialLetter = "", onHome
   };
 
   const speakLetter = () => speakVietnamese(current.sound || current.letter || current.label || "");
-  const speakWord = () => speakVietnamese(current.word || "");
   const speakExample = () => speakVietnamese(current.example || current.word || "");
 
   const shuffledIndex = items.length <= 1 ? 0 : Math.floor(Math.random() * items.length);
@@ -125,52 +124,78 @@ export default function LetterFlashcard({ items = [], initialLetter = "", onHome
                   Chữ thường: {current.letter.toLocaleLowerCase("vi-VN")}
                 </span>
               </div>
-              <p className={styles.flashcardHint}>Xem ví dụ và nghe lại âm</p>
+              <div className={styles.flashcardBackActions}>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className={styles.flashcardBackBtn}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    speakExample();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      speakExample();
+                    }
+                  }}
+                >
+                  🔊 Nghe ví dụ
+                </span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className={styles.flashcardBackBtn}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    goToIndex(shuffledIndex);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      goToIndex(shuffledIndex);
+                    }
+                  }}
+                >
+                  🔀 Xáo thẻ
+                </span>
+              </div>
             </div>
           </div>
         </button>
       </div>
 
+      {/* Mục 5.5: giảm từ 7 nút xuống còn 3 nút to — ◀ · 🔊 · ▶.
+          Lật thẻ bằng cách chạm vào chính thẻ. "Xáo thẻ" và "Nghe ví dụ"
+          chuyển sang mặt sau của thẻ. */}
       <div className={styles.flashcardControls}>
         <button
-          className="btn secondary compact"
           type="button"
+          className="kbtn subject-let"
           onClick={() => goToIndex(currentIndex - 1)}
           disabled={items.length <= 1}
+          aria-label="Thẻ trước"
         >
-          Thẻ trước
-        </button>
-        <button className="btn primary compact" type="button" onClick={speakLetter}>
-          Nghe chữ
+          ◀
         </button>
         <button
-          className="btn secondary compact"
           type="button"
-          onClick={() => setFlipped((value) => !value)}
+          className="kbtn subject-let"
+          onClick={speakLetter}
+          aria-label={`Nghe chữ ${current.letter}`}
         >
-          Lật thẻ
-        </button>
-        <button className="btn primary compact" type="button" onClick={speakWord}>
-          Nghe từ
-        </button>
-        <button className="btn secondary compact" type="button" onClick={speakExample}>
-          Nghe ví dụ
+          🔊
         </button>
         <button
-          className="btn secondary compact"
           type="button"
-          onClick={() => goToIndex(shuffledIndex)}
-          disabled={items.length <= 1}
-        >
-          Xáo thẻ
-        </button>
-        <button
-          className="btn secondary compact"
-          type="button"
+          className="kbtn subject-let"
           onClick={() => goToIndex(currentIndex + 1)}
           disabled={items.length <= 1}
+          aria-label="Thẻ tiếp"
         >
-          Thẻ tiếp
+          ▶
         </button>
       </div>
 

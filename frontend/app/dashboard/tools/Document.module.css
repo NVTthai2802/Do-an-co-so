@@ -25,7 +25,7 @@
   padding: 32px 24px;
   border: 2.5px dashed rgba(255, 168, 160, 0.45);
   border-radius: 24px;
-  background: linear-gradient(135deg, #fffcfa 0%, #fff8f5 50%, #fef5f0 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface) 50%, var(--brand-50) 100%);
   cursor: pointer;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
@@ -33,15 +33,15 @@
 
 .uploadZone:hover {
   border-color: rgba(255, 168, 160, 0.7);
-  background: linear-gradient(135deg, #fff8f5 0%, #fff3ee 50%, #ffede6 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--brand-50) 50%, var(--brand-50) 100%);
   box-shadow: 0 8px 30px rgba(255, 143, 127, 0.1);
   transform: translateY(-2px);
 }
 
 .uploadZoneActive {
-  border-color: var(--accent) !important;
+  border-color: var(--let-400) !important;
   border-style: solid !important;
-  background: linear-gradient(135deg, #f0f4ff 0%, #e8efff 50%, #dfe8ff 100%) !important;
+  background: linear-gradient(135deg, var(--let-50) 0%, var(--let-50) 50%, var(--let-50) 100%) !important;
   box-shadow: 0 0 0 4px rgba(181, 200, 255, 0.25),
               0 12px 36px rgba(94, 116, 246, 0.12) !important;
   transform: scale(1.01);
@@ -70,17 +70,17 @@
 .uploadText {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--ink);
 }
 
 .uploadHint {
   font-size: 0.88rem;
-  color: var(--muted);
+  color: var(--ink-soft);
 }
 
 .uploadFormats {
   font-size: 0.78rem;
-  color: var(--primary-dark);
+  color: var(--brand-700);
   font-weight: 700;
   margin-top: 4px;
   letter-spacing: 0.5px;
@@ -94,7 +94,7 @@
   width: 100%;
   padding: 14px 18px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #fff 0%, #fffaf7 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface) 100%);
   border: 1.5px solid rgba(255, 168, 160, 0.2);
   box-shadow: 0 4px 16px rgba(100, 80, 70, 0.05);
   transition: all 0.25s ease;
@@ -116,7 +116,7 @@
   display: grid;
   place-items: center;
   border-radius: 16px;
-  background: linear-gradient(135deg, #fff0e7 0%, #ffe4da 100%);
+  background: linear-gradient(135deg, var(--brand-50) 0%, var(--brand-50) 100%);
   font-size: 1.6rem;
   flex-shrink: 0;
 }
@@ -132,7 +132,7 @@
 .fileName {
   font-weight: 700;
   font-size: 0.95rem;
-  color: var(--text);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -140,15 +140,15 @@
 
 .fileMeta {
   font-size: 0.82rem;
-  color: var(--muted);
+  color: var(--ink-soft);
 }
 
 .changeFileBtn {
   padding: 6px 14px;
   border: 1.5px solid rgba(26, 24, 21, 0.1);
   border-radius: 999px;
-  background: #fff;
-  color: var(--text);
+  background: var(--surface);
+  color: var(--ink);
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -157,14 +157,14 @@
 }
 
 .changeFileBtn:hover {
-  background: #fff8f5;
+  background: var(--surface);
   border-color: rgba(255, 168, 160, 0.3);
 }
 
 /* ─── Result Area ─── */
 .resultCol {
   border-radius: 22px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #f5f6f8 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface) 100%);
   border: 1.5px solid rgba(26, 24, 21, 0.06);
   padding: 24px;
 }
@@ -180,7 +180,7 @@
 .resultTitle {
   font-size: 1.05rem;
   font-weight: 800;
-  color: var(--text);
+  color: var(--ink);
   margin: 0;
 }
 
@@ -195,8 +195,8 @@
   gap: 4px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #fff0e7;
-  color: var(--primary-dark);
+  background: var(--brand-50);
+  color: var(--brand-700);
   font-size: 0.76rem;
   font-weight: 700;
 }
@@ -207,11 +207,11 @@
   padding: 16px;
   border: 1.5px solid rgba(26, 24, 21, 0.08);
   border-radius: 16px;
-  background: #fff;
+  background: var(--surface);
   font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.7;
-  color: var(--text);
+  color: var(--ink);
   resize: vertical;
 }
 
@@ -236,8 +236,8 @@
   padding: 9px 16px;
   border-radius: 999px;
   border: 1.5px solid rgba(26, 24, 21, 0.08);
-  background: #fff;
-  color: var(--text);
+  background: var(--surface);
+  color: var(--ink);
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -246,27 +246,27 @@
 }
 
 .actionBtn:hover {
-  background: #fff8f5;
+  background: var(--surface);
   border-color: rgba(255, 168, 160, 0.3);
   box-shadow: 0 4px 12px rgba(100, 80, 70, 0.08);
   transform: translateY(-1px);
 }
 
 .speakBtn {
-  background: linear-gradient(135deg, var(--accent), #8fa8ff);
-  color: #fff;
+  background: linear-gradient(135deg, var(--let-400), var(--let-400));
+  color: var(--surface);
   border-color: transparent;
   box-shadow: 0 4px 16px rgba(94, 116, 246, 0.2);
 }
 
 .speakBtn:hover {
   box-shadow: 0 8px 24px rgba(94, 116, 246, 0.3);
-  background: linear-gradient(135deg, #a0b8ff, #7b9dff);
+  background: linear-gradient(135deg, var(--let-400), var(--let-700));
 }
 
 .ttsLink {
-  background: linear-gradient(135deg, var(--accent-2), #7dc9a5);
-  color: #fff;
+  background: linear-gradient(135deg, var(--shp-400), var(--ok-400));
+  color: var(--surface);
   border-color: transparent;
   box-shadow: 0 4px 16px rgba(168, 223, 200, 0.3);
 }
@@ -284,7 +284,7 @@
   gap: 16px;
   padding: 48px 24px;
   text-align: center;
-  color: var(--muted);
+  color: var(--ink-soft);
   font-weight: 600;
 }
 
@@ -293,7 +293,7 @@
   height: 48px;
   border-radius: 50%;
   border: 4px solid rgba(255, 168, 160, 0.15);
-  border-top-color: var(--primary);
+  border-top-color: var(--brand-400);
   animation: spin 0.9s linear infinite;
 }
 
@@ -317,7 +317,7 @@
 }
 
 .emptyState p {
-  color: var(--muted);
+  color: var(--ink-soft);
   font-size: 0.95rem;
   margin: 0;
 }

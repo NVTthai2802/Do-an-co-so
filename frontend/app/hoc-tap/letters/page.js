@@ -66,7 +66,6 @@ export default function HocChu() {
       <div className="kid-lesson subject-let">
 
         <div className={styles.lessonContent}>
-          <h1 className={styles.title}>🔤 Học chữ cái</h1>
 
           <div className={styles.tabBar}>
             <button

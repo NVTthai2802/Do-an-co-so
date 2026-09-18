@@ -594,7 +594,7 @@ def _build_ali(skill_snapshot: dict[str, Any]) -> dict[str, Any]:
         note = f"Điểm mạnh hiện tại của bé nằm ở {', '.join(note_parts[:3])}."
 
     if attempts.get("time_score", 0) == 0:
-        note += " Học giờ chưa có dữ liệu nên ALI chưa phản ánh đầy đủ."
+        note += " Học giờ chưa có dữ liệu nên chỉ số học tập chưa phản ánh đầy đủ."
 
     return {
         "score": ali_score,
@@ -828,7 +828,7 @@ def _build_badges(
     add_badge("Hình học", "Điểm hình học đạt từ 85 trở lên.", skill_scores.get("geometry_score", 0) >= 85, "blue")
     add_badge("Phép toán", "Điểm phép toán đạt từ 85 trở lên.", skill_scores.get("math_score", 0) >= 85, "violet")
     add_badge("Luyện đọc", "Điểm luyện đọc đạt từ 85 trở lên.", skill_scores.get("reading_score", 0) >= 85, "green")
-    add_badge("Siêu sao AI", "ALI từ 85 trở lên.", ali["score"] >= 85, "purple")
+    add_badge("Siêu sao AI", "Chỉ số học tập từ 85 trở lên.", ali["score"] >= 85, "purple")
     add_badge("Tài liệu thông minh", "Đã xử lý ít nhất một tài liệu học tập.", len(documents) > 0, "slate")
     add_badge("Mắt camera", "Đã có dữ liệu AI camera.", camera_results["summary"]["attempts"] > 0, "cyan")
     add_badge("Đọc lên tiếng", "Đã hoàn thành ít nhất một phiên luyện đọc.", reading_results["summary"]["total_words"] > 0, "pink")

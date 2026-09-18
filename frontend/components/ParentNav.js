@@ -7,6 +7,7 @@ const parentLinks = [
   { href: "/dashboard", path: "/dashboard", label: "Tổng quan" },
   { href: "/dashboard/results", path: "/dashboard/results", label: "Báo cáo" },
   { href: "/dashboard/tools", path: "/dashboard/tools", label: "Công cụ cho bé" },
+  { href: "/dashboard/settings", path: "/dashboard/settings", label: "Cài đặt" },
 ];
 
 export default function ParentNav() {

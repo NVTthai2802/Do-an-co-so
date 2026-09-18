@@ -3,44 +3,18 @@
   gap: 20px;
 }
 
+/* Muc 5.10: the trang giong moi trang khac, khong con nen xanh den */
 .hero {
   position: relative;
-  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(260px, 340px);
   gap: 24px;
   padding: 30px;
-  border-radius: 34px;
-  background:
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.24), transparent 34%),
-    radial-gradient(circle at bottom left, rgba(249, 115, 22, 0.18), transparent 30%),
-    linear-gradient(135deg, var(--ink) 0%, var(--ink) 46%, var(--ok-700) 100%);
-  color: var(--surface);
-  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
-}
-
-.hero::before,
-.hero::after {
-  content: "";
-  position: absolute;
-  border-radius: 999px;
-  pointer-events: none;
-}
-
-.hero::before {
-  width: 220px;
-  height: 220px;
-  top: -100px;
-  right: -40px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.hero::after {
-  width: 140px;
-  height: 140px;
-  left: -40px;
-  bottom: -60px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
 }
 
 .heroCopy {
@@ -57,7 +31,7 @@
 
 .heroCopy p {
   max-width: 62ch;
-  color: var(--surface);
+  color: var(--ink-soft);
   line-height: 1.7;
 }
 
@@ -73,8 +47,8 @@
   gap: 4px;
   min-width: 132px;
   padding: 12px 14px;
-  border-radius: 18px;
-  background: var(--surface);
+  border-radius: var(--r-sm);
+  background: var(--bg);
   border: 1px solid var(--line);
 }
 
@@ -97,7 +71,7 @@
   place-items: center;
   min-height: 280px;
   border-radius: 28px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -123,7 +97,7 @@
 }
 
 .ringTrack {
-  stroke: rgba(255, 255, 255, 0.12);
+  stroke: var(--line);
 }
 
 .ringProgress {
@@ -160,7 +134,7 @@
   transform: translateX(-50%);
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.34);
+  background: var(--ink);
   color: var(--surface);
   font-size: 0.82rem;
   font-weight: 800;
@@ -310,17 +284,19 @@
 }
 
 .chartArea {
-  fill: rgba(94, 116, 246, 0.14);
+  fill: rgba(29, 78, 216, 0.1);
 }
 
+/* Muc 5.10: duong 3px, mau chay theo cac mon */
 .chartLine {
   fill: none;
-  stroke: var(--let-700);
-  stroke-width: 4;
+  stroke: url(#trendLine);
+  stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
+/* Diem du lieu to hon cho de nhin */
 .chartDot {
   fill: var(--surface);
   stroke: var(--let-700);
@@ -328,7 +304,7 @@
 }
 
 .chartHalo {
-  fill: rgba(94, 116, 246, 0.12);
+  fill: rgba(29, 78, 216, 0.12);
 }
 
 .chartLabels {
@@ -872,4 +848,29 @@
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* Muc 5.10 - ky nang chua luyen lan nao: xam, trung tinh, khong phai "Do" */
+.toneIdle {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.toneIdle .skillScore,
+.toneIdle .skillLevel {
+  color: var(--ink-soft);
+}
+
+.toneIdle .skillBarTrack {
+  opacity: 0.5;
+}
+
+/* Nhan cua vong tron diem - bo thuat ngu "ALI" */
+.ringCaption {
+  margin-top: 10px;
+  text-align: center;
+  font: 800 0.82rem/1.2 var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }

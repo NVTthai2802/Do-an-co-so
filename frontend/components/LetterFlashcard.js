@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { speakVietnamese } from "../lib/speech";
+import RewardSummary from "./RewardSummary";
 import styles from "../app/hoc-tap/letters/HocChu.module.css";
 
 function wrapIndex(index, total) {
@@ -28,16 +29,28 @@ function findInitialIndex(items, initialLetter) {
   return index >= 0 ? index : 0;
 }
 
-export default function LetterFlashcard({ items = [], initialLetter = "" }) {
+export default function LetterFlashcard({ items = [], initialLetter = "", onHome }) {
   const [currentIndex, setCurrentIndex] = useState(() =>
     findInitialIndex(items, initialLetter)
   );
   const [flipped, setFlipped] = useState(false);
+  // Xong MỘT VÒNG thẻ thì chúc mừng cấp 3 (Mục 6.3, bảng "chỗ gắn hiệu ứng").
+  const [seen, setSeen] = useState(() => new Set());
+  const [celebrated, setCelebrated] = useState(false);
 
   useEffect(() => {
-    setCurrentIndex(findInitialIndex(items, initialLetter));
+    const start = findInitialIndex(items, initialLetter);
+    setCurrentIndex(start);
     setFlipped(false);
+    setSeen(new Set([start]));
+    setCelebrated(false);
   }, [items, initialLetter]);
+
+  const roundDone = items.length > 0 && seen.size >= items.length;
+
+  useEffect(() => {
+    if (roundDone && !celebrated) setCelebrated(true);
+  }, [roundDone, celebrated]);
 
   if (!items.length) {
     return <div className="info">Chưa có dữ liệu flashcard.</div>;
@@ -46,8 +59,20 @@ export default function LetterFlashcard({ items = [], initialLetter = "" }) {
   const current = items[currentIndex] || items[0];
 
   const goToIndex = (nextIndex) => {
-    setCurrentIndex(wrapIndex(nextIndex, items.length));
+    const target = wrapIndex(nextIndex, items.length);
+    setCurrentIndex(target);
     setFlipped(false);
+    setSeen((prev) => {
+      if (prev.has(target)) return prev;
+      const next = new Set(prev);
+      next.add(target);
+      return next;
+    });
+  };
+
+  const replayRound = () => {
+    setSeen(new Set([currentIndex]));
+    setCelebrated(false);
   };
 
   const speakLetter = () => speakVietnamese(current.sound || current.letter || current.label || "");
@@ -65,7 +90,7 @@ export default function LetterFlashcard({ items = [], initialLetter = "" }) {
           <p>Bấm vào thẻ để lật, nghe phát âm và chuyển sang chữ khác.</p>
         </div>
         <span className="badge">
-          {currentIndex + 1}/{items.length}
+          Đã xem {seen.size}/{items.length} thẻ
         </span>
       </div>
 
@@ -163,6 +188,17 @@ export default function LetterFlashcard({ items = [], initialLetter = "" }) {
           </button>
         ))}
       </div>
+
+      {celebrated ? (
+        <RewardSummary
+          stars={3}
+          total={items.length}
+          correctFirstTry={items.length}
+          summaryText={`Con đã xem hết ${items.length} thẻ chữ!`}
+          onReplay={replayRound}
+          onHome={onHome || replayRound}
+        />
+      ) : null}
     </section>
   );
 }

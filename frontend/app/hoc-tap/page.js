@@ -1,12 +1,16 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clearSession, getToken, saveSession } from "../../lib/auth";
 import { request } from "../../lib/api";
 import { recordLearningResult } from "../../lib/learning";
 import { speakVietnamese } from "../../lib/speech";
 import KidTopBar from "../../components/KidTopBar";
+import FeedbackBubble from "../../components/FeedbackBubble";
+import RewardSummary from "../../components/RewardSummary";
+import KidSwitches from "../../components/KidSwitches";
+import useQuizSession from "../../hooks/useQuizSession";
 import CompactNumberPicker from "../../components/CompactNumberPicker";
 import ParentalGate from "../../components/ParentalGate";
 
@@ -397,29 +401,48 @@ function LessonShell({ title, subject = "num", children }) {
 function NumberLesson() {
   const [mode, setMode] = useState("learn");
 
+  // Chế độ "Chơi" dựng khung riêng, vì thanh trên cùng phải mang thanh tiến
+  // độ của lượt chơi và ô đếm sao (Mục 4.3), không chỉ tiêu đề.
+  if (mode === "math") {
+    return <MathGameMode onBackToLearn={() => setMode("learn")} />;
+  }
+
   return (
     <LessonShell title="Số" subject="num">
       <div className="mode-tabs" role="tablist" aria-label="Chế độ học số">
-        <button
-          className={`mode-tab ${mode === "learn" ? "active" : ""}`}
-          onClick={() => setMode("learn")}
-          role="tab"
-          aria-selected={mode === "learn"}
-        >
+        <button className="mode-tab active" role="tab" aria-selected={true} onClick={() => setMode("learn")}>
           Nhận biết số
         </button>
-        <button
-          className={`mode-tab ${mode === "math" ? "active" : ""}`}
-          onClick={() => setMode("math")}
-          role="tab"
-          aria-selected={mode === "math"}
-        >
+        <button className="mode-tab" role="tab" aria-selected={false} onClick={() => setMode("math")}>
           Toán học vui
         </button>
       </div>
 
-      {mode === "learn" ? <NumberReadingMode /> : <MathGameMode />}
+      <NumberReadingMode />
     </LessonShell>
+  );
+}
+
+/** 4 đáp án: 1 đúng + 3 nhiễu gần đúng (Mục 5.4 – giảm tải lựa chọn). */
+function buildChoices(answer, limit) {
+  const set = new Set([answer]);
+  let guard = 0;
+  while (set.size < 4 && guard < 80) {
+    guard += 1;
+    const spread = limit <= 10 ? 3 : 12;
+    const delta = randomInt(1, spread) * (Math.random() > 0.5 ? 1 : -1);
+    const candidate = answer + delta;
+    if (candidate >= 0 && candidate <= limit) set.add(candidate);
+  }
+  for (let n = 0; set.size < 4 && n <= limit; n += 1) set.add(n);
+
+  return [...set].slice(0, 4).sort(() => Math.random() - 0.5);
+}
+
+function speakProblem(problem) {
+  const op = problem.operator === "+" ? "cộng" : "trừ";
+  speakVietnamese(
+    `${readNumberVietnamese(problem.left)} ${op} ${readNumberVietnamese(problem.right)} bằng mấy?`
   );
 }
 
@@ -588,18 +611,16 @@ function NumberSpotlight({ number, objectCount }) {
   );
 }
 
-function MathGameMode() {
+function MathGameMode({ onBackToLearn }) {
+  const router = useRouter();
   const [rangeLimit, setRangeLimit] = useState(10);
-  const [problem, setProblem] = useState(() => createMathProblem(10));
-  const [composedAnswer, setComposedAnswer] = useState(0);
-  const [detectedNumber, setDetectedNumber] = useState(null);
-  const [feedback, setFeedback] = useState("Sẵn sàng");
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [fingerCount, setFingerCount] = useState(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [handStatus, setHandStatus] = useState("Bật camera rồi giơ số ngón tay");
-  const [wrongAttempts, setWrongAttempts] = useState(0);
+
+  const starBoxRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const handsRef = useRef(null);
@@ -608,27 +629,67 @@ function MathGameMode() {
   const holdStartRef = useRef(0);
   const stableFingerRef = useRef(null);
   const submittedFingerRef = useRef(null);
-  const nextProblemTimerRef = useRef(null);
-  const answerLockedRef = useRef(false);
-  const problemRef = useRef(problem);
-  const wrongAttemptsRef = useRef(0);
+  const answerRef = useRef(null);
+  const buttonRefs = useRef({});
+  // Nguồn thật của đáp án. Chỉ ghi "camera" khi đáp án đến từ MediaPipe
+  // (Mục 5.4 – sửa dữ liệu P0); bé bấm nút thì luôn là "tap".
+  const answerSourceRef = useRef("tap");
 
-  useEffect(() => {
-    return () => {
-      if (nextProblemTimerRef.current) {
-        clearTimeout(nextProblemTimerRef.current);
-      }
-      stopCamera(false);
-    };
+  const makeQuestion = useCallback(() => {
+    const problem = createMathProblem(rangeLimit);
+    return { ...problem, choices: buildChoices(problem.answer, rangeLimit) };
+  }, [rangeLimit]);
+
+  const isCorrect = useCallback((question, value) => value === question.answer, []);
+
+  const hintFor = useCallback((question) => {
+    const op = question.operator === "+" ? "thêm" : "bớt";
+    return `Mình cùng đếm nhé: ${question.left} ${op} ${question.right} là...`;
   }, []);
 
-  useEffect(() => {
-    problemRef.current = problem;
-  }, [problem]);
+  const onFinish = useCallback(
+    (summary) => {
+      // Ghi kết quả CẢ LƯỢT một lần, với thời gian đo thật (Mục 5.4).
+      const source = answerSourceRef.current;
+      void recordLearningResult({
+        module_key: "math",
+        activity_key: source === "camera" ? `camera_math_${rangeLimit}` : `tap_math_${rangeLimit}`,
+        title: `Cộng trừ phạm vi ${rangeLimit}`,
+        score: summary.correctFirstTry,
+        max_score: summary.total,
+        accuracy: Math.round((summary.correctFirstTry / summary.total) * 100),
+        time_spent_seconds: summary.timeSpentSeconds,
+        detail: {
+          mode: source,
+          range_limit: rangeLimit,
+          questions: summary.total,
+          correct_first_try: summary.correctFirstTry,
+          total_attempts: summary.totalTries,
+          wrong_attempts: Math.max(0, summary.totalTries - summary.total),
+          stars: summary.stars,
+        },
+      });
+    },
+    [rangeLimit]
+  );
+
+  const quiz = useQuizSession({ makeQuestion, isCorrect, hintFor, onFinish, starBoxRef });
+  const quizAnswer = quiz.answer;
+
+  const answerFromCamera = useCallback(
+    (value) => {
+      answerSourceRef.current = "camera";
+      quizAnswer(value, buttonRefs.current[value] || null);
+    },
+    [quizAnswer]
+  );
+
+  answerRef.current = answerFromCamera;
 
   useEffect(() => {
-    wrongAttemptsRef.current = wrongAttempts;
-  }, [wrongAttempts]);
+    return () => stopCamera(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (cameraOn && videoRef.current && streamRef.current) {
@@ -637,6 +698,12 @@ function MathGameMode() {
       if (playPromise?.catch) playPromise.catch(() => {});
     }
   }, [cameraOn]);
+
+  // Sang câu mới thì quên số ngón tay đã gửi.
+  useEffect(() => {
+    resetHeldFinger();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quiz.index]);
 
   useEffect(() => {
     if (!cameraOn) return undefined;
@@ -679,7 +746,7 @@ function MathGameMode() {
 
         rafRef.current = requestAnimationFrame(loop);
       } catch {
-        setCameraError("Không tải được nhận diện tay.");
+        setCameraError("Không tải được nhận diện tay. Bé vẫn bấm chọn đáp án được.");
       }
     }
 
@@ -704,23 +771,19 @@ function MathGameMode() {
   }
 
   function processNumberHandResults(results) {
-    if (answerLockedRef.current || rangeLimit !== 10) return;
-
     const totalFingers = countFingersFromResults(results);
-    if (!totalFingers) {
+    if (!results.multiHandLandmarks?.length) {
       resetHeldFinger();
-      setHandStatus("Giơ số ngón tay để trả lời");
+      setHandStatus("Chưa thấy bàn tay");
       return;
     }
 
-    const now = Date.now();
     setFingerCount(totalFingers);
-    setDetectedNumber(totalFingers);
 
+    const now = Date.now();
     if (stableFingerRef.current !== totalFingers) {
       stableFingerRef.current = totalFingers;
       holdStartRef.current = now;
-      submittedFingerRef.current = null;
       setHoldProgress(0);
       setHandStatus(`Đang giữ số ${totalFingers}`);
       return;
@@ -733,127 +796,8 @@ function MathGameMode() {
     if (elapsed >= 3000 && submittedFingerRef.current !== totalFingers) {
       submittedFingerRef.current = totalFingers;
       setHandStatus(`Đã nhận số ${totalFingers}`);
-      evaluateAnswer(totalFingers);
+      answerRef.current?.(totalFingers);
     }
-  }
-
-  function scheduleNextProblem(delay = 1400) {
-    if (nextProblemTimerRef.current) {
-      clearTimeout(nextProblemTimerRef.current);
-    }
-    nextProblemTimerRef.current = setTimeout(() => {
-      nextProblem();
-      nextProblemTimerRef.current = null;
-    }, delay);
-  }
-
-  function evaluateAnswer(number) {
-    if (answerLockedRef.current) return;
-
-    setDetectedNumber(number);
-    if (number === problemRef.current.answer) {
-      const wrongCount = wrongAttemptsRef.current;
-      const sessionScore = Math.max(0, 100 - wrongCount * 20);
-      answerLockedRef.current = true;
-      setWrongAttempts(0);
-      wrongAttemptsRef.current = 0;
-      setFeedback("Chính xác! Sang câu mới...");
-      speakVietnamese("Chính xác");
-      void recordLearningResult({
-        module_key: "math",
-        activity_key: rangeLimit === 10 ? "camera_math_10" : "compose_math_100",
-        title: `Cộng trừ phạm vi ${rangeLimit}`,
-        score: sessionScore,
-        max_score: 100,
-        accuracy: sessionScore,
-        time_spent_seconds: 0,
-        detail: {
-          mode: rangeLimit === 10 ? "camera" : "compose",
-          range_limit: rangeLimit,
-          left: problemRef.current.left,
-          right: problemRef.current.right,
-          operator: problemRef.current.operator,
-          answer: problemRef.current.answer,
-          detected_number: number,
-          wrong_attempts: wrongCount,
-          correct: true,
-        },
-      });
-      scheduleNextProblem();
-      return;
-    }
-
-    const nextAttempts = wrongAttemptsRef.current + 1;
-    wrongAttemptsRef.current = nextAttempts;
-    setWrongAttempts(nextAttempts);
-
-    if (nextAttempts >= 3) {
-      answerLockedRef.current = true;
-      setFeedback(`Đáp án là ${problemRef.current.answer}. Sang câu mới...`);
-      speakVietnamese(`Đáp án là ${problemRef.current.answer}`);
-      void recordLearningResult({
-        module_key: "math",
-        activity_key: rangeLimit === 10 ? "camera_math_10" : "compose_math_100",
-        title: `Cộng trừ phạm vi ${rangeLimit}`,
-        score: 0,
-        max_score: 100,
-        accuracy: 0,
-        time_spent_seconds: 0,
-        detail: {
-          mode: rangeLimit === 10 ? "camera" : "compose",
-          range_limit: rangeLimit,
-          left: problemRef.current.left,
-          right: problemRef.current.right,
-          operator: problemRef.current.operator,
-          answer: problemRef.current.answer,
-          detected_number: number,
-          wrong_attempts: nextAttempts,
-          correct: false,
-        },
-      });
-      scheduleNextProblem(2400);
-      return;
-    }
-
-    setFeedback(`Thử lại nhé (${nextAttempts}/3)`);
-    speakVietnamese("Thử lại nhé");
-  }
-
-  function nextProblem() {
-    if (nextProblemTimerRef.current) {
-      clearTimeout(nextProblemTimerRef.current);
-      nextProblemTimerRef.current = null;
-    }
-    setProblem(createMathProblem(rangeLimit));
-    setComposedAnswer(0);
-    setDetectedNumber(null);
-    setFeedback("Sẵn sàng");
-    setWrongAttempts(0);
-    wrongAttemptsRef.current = 0;
-    answerLockedRef.current = false;
-    resetHeldFinger();
-    setHandStatus(cameraOn ? "Giữ nguyên số ngón tay trong 3 giây" : "Bật camera rồi giơ số ngón tay");
-  }
-
-  function switchRange(nextLimit) {
-    if (nextLimit === rangeLimit) return;
-    if (nextProblemTimerRef.current) {
-      clearTimeout(nextProblemTimerRef.current);
-      nextProblemTimerRef.current = null;
-    }
-    if (nextLimit > 10) {
-      stopCamera();
-    }
-    setRangeLimit(nextLimit);
-    setProblem(createMathProblem(nextLimit));
-    setComposedAnswer(0);
-    setDetectedNumber(null);
-    setFeedback("Sẵn sàng");
-    setWrongAttempts(0);
-    wrongAttemptsRef.current = 0;
-    answerLockedRef.current = false;
-    resetHeldFinger();
-    setHandStatus(nextLimit === 10 ? "Bật camera rồi giơ số ngón tay" : "Chọn đáp án bên dưới");
   }
 
   async function startCamera() {
@@ -872,7 +816,7 @@ function MathGameMode() {
       setCameraOn(true);
       setHandStatus("Đang mở camera");
     } catch {
-      setCameraError("Không mở được camera.");
+      setCameraError("Không mở được camera. Bé vẫn bấm chọn đáp án được.");
     }
   }
 
@@ -898,110 +842,140 @@ function MathGameMode() {
     }
   }
 
+  function switchRange(nextLimit) {
+    if (nextLimit === rangeLimit) return;
+    if (nextLimit > 10) stopCamera();
+    setRangeLimit(nextLimit);
+    quiz.replay();
+  }
+
+  const question = quiz.question;
+
   return (
-    <section className="activity-panel">
-      <div className="mode-tabs secondary-tabs" role="tablist" aria-label="Phạm vi làm toán">
-        <button
-          className={`mode-tab ${rangeLimit === 10 ? "active" : ""}`}
-          onClick={() => switchRange(10)}
-          role="tab"
-          aria-selected={rangeLimit === 10}
-        >
-          Phạm vi 10
-        </button>
-        <button
-          className={`mode-tab ${rangeLimit === 100 ? "active" : ""}`}
-          onClick={() => switchRange(100)}
-          role="tab"
-          aria-selected={rangeLimit === 100}
-        >
-          Phạm vi 100
-        </button>
-      </div>
+    <main className="kid-shell">
+      <KidTopBar
+        subject="num"
+        title="Số"
+        progress={{ current: quiz.index, total: quiz.total }}
+        stars={quiz.stars}
+        starBoxRef={starBoxRef}
+      />
 
-      <div className={`math-layout ${rangeLimit === 100 ? "math-layout-wide" : ""}`}>
-        <div className="problem-panel">
-          <span className="badge">Cộng trừ phạm vi {rangeLimit}</span>
-          <div className="math-expression">
-            {problem.left} {problem.operator} {problem.right} = ?
+      <div className="kid-lesson subject-num">
+        <div className="qcard">
+          <div className="qtext">
+            {question.left} {question.operator} {question.right} = ?
           </div>
-          <p className={feedback.includes("Chính xác") ? "success-text" : ""}>{feedback}</p>
-          {detectedNumber !== null ? (
-            <div className="detected-number">Số đang nhận: {detectedNumber}</div>
-          ) : null}
-          {wrongAttempts > 0 ? (
-            <div className="detected-number">Số lần sai: {wrongAttempts}/3</div>
-          ) : null}
-
-          {rangeLimit === 10 ? (
-            <div className="manual-answer-grid">
-              {answerChoices10.map((number) => (
-                <button key={number} className="chip" onClick={() => evaluateAnswer(number)}>
-                  {number}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="composed-answer-panel">
-              <CompactNumberPicker
-                label="Ghép đáp án"
-                value={composedAnswer}
-                min={0}
-                max={100}
-                onChange={setComposedAnswer}
-              />
-              <button className="btn primary compact" onClick={() => evaluateAnswer(composedAnswer)}>
-                Kiểm tra
-              </button>
-            </div>
-          )}
-
-          <button className="btn primary compact" onClick={nextProblem}>
-            Câu mới
+          <button type="button" className="qspeak" aria-label="Nghe câu hỏi" onClick={() => speakProblem(question)}>
+            🔊
           </button>
         </div>
 
+        <FeedbackBubble mood={quiz.mood} message={quiz.message} hint={quiz.hint} />
+
+        <div className="answer-grid">
+          {question.choices.map((value) => {
+            const spent = quiz.wrongValues.includes(value);
+            const isAnswer = value === question.answer;
+            const classes = [
+              "kbtn soft subject-num",
+              spent ? "is-spent is-try" : "",
+              quiz.shakeValue === value ? "is-try" : "",
+              isAnswer && quiz.mood === "happy" ? "is-ok" : "",
+              isAnswer && quiz.revealAnswer ? "is-reveal" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+
+            return (
+              <button
+                key={value}
+                type="button"
+                ref={(el) => {
+                  buttonRefs.current[value] = el;
+                }}
+                className={classes}
+                disabled={spent}
+                onClick={(event) => {
+                  answerSourceRef.current = "tap";
+                  quiz.answer(value, event.currentTarget);
+                }}
+              >
+                {value}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mode-tabs secondary-tabs" role="tablist" aria-label="Phạm vi làm toán">
+          <button
+            className={`mode-tab ${rangeLimit === 10 ? "active" : ""}`}
+            onClick={() => switchRange(10)}
+            role="tab"
+            aria-selected={rangeLimit === 10}
+          >
+            Phạm vi 10
+          </button>
+          <button
+            className={`mode-tab ${rangeLimit === 100 ? "active" : ""}`}
+            onClick={() => switchRange(100)}
+            role="tab"
+            aria-selected={rangeLimit === 100}
+          >
+            Phạm vi 100
+          </button>
+          <button type="button" className="mode-tab" onClick={onBackToLearn}>
+            Nhận biết số
+          </button>
+        </div>
+
+        {/* Camera ẩn mặc định (Mục 5.4): bấm thẻ mới mở khung camera. */}
         {rangeLimit === 10 ? (
           <div className="camera-panel">
-            <div className="camera-frame">
-              {cameraOn ? (
-                <video ref={videoRef} autoPlay playsInline muted />
-              ) : (
-                <div className="camera-placeholder">Camera</div>
-              )}
-            </div>
+            {cameraOn ? (
+              <>
+                <div className="camera-frame">
+                  <video ref={videoRef} autoPlay playsInline muted />
+                </div>
 
-            <div className="camera-status">
-              <span>{handStatus}</span>
-              {fingerCount !== null ? <strong>{fingerCount}</strong> : null}
-              <div className="hold-meter" aria-hidden="true">
-                <span style={{ width: `${Math.round(holdProgress * 100)}%` }} />
-              </div>
-            </div>
+                <div className="camera-status">
+                  <span>{handStatus}</span>
+                  {fingerCount !== null ? <strong>{fingerCount}</strong> : null}
+                  <div className="hold-meter" aria-hidden="true">
+                    <span style={{ width: `${Math.round(holdProgress * 100)}%` }} />
+                  </div>
+                </div>
 
-            <div className="camera-actions">
-              {cameraOn ? (
-                <button className="btn secondary" onClick={stopCamera}>
-                  Tắt camera
-                </button>
-              ) : (
-                <button className="btn secondary" onClick={startCamera}>
-                  Bật camera
-                </button>
-              )}
-            </div>
+                <div className="camera-actions">
+                  <button className="btn secondary" onClick={() => stopCamera()}>
+                    Tắt camera
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button type="button" className="camera-toggle-card" onClick={startCamera}>
+                <span aria-hidden="true">🖐️</span>
+                Trả lời bằng ngón tay
+              </button>
+            )}
 
-            {cameraError ? <div className="error">{cameraError}</div> : null}
+            {cameraError ? <div className="info">{cameraError}</div> : null}
           </div>
-        ) : (
-          <div className="camera-panel number-note-panel">
-            <span className="badge">Phạm vi 100</span>
-            <p>Với bài toán lớn hơn 10, bé ghép hàng chục và hàng đơn vị rồi bấm kiểm tra.</p>
-            <p>Phần giơ ngón tay vẫn dùng cho bài cộng trừ phạm vi 10.</p>
-          </div>
-        )}
+        ) : null}
+
+        <KidSwitches />
       </div>
-    </section>
+
+      {quiz.finished ? (
+        <RewardSummary
+          stars={quiz.finished.stars}
+          total={quiz.finished.total}
+          correctFirstTry={quiz.finished.correctFirstTry}
+          onReplay={quiz.replay}
+          onHome={() => router.push("/hoc-tap")}
+        />
+      ) : null}
+    </main>
   );
 }
 

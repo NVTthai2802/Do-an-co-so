@@ -10,8 +10,9 @@ import Link from "next/link";
  * subject: "num" | "let" | "shp" | "tim" | "rd"  -> màu của bài học.
  * progress: { current, total } -> thanh tiến độ lượt chơi (bỏ trống thì ẩn).
  * stars: số sao đã đạt (bỏ trống thì ẩn ô sao).
+ * starBoxRef: ref tới ô ⭐ để ngôi sao bay tới (Mục 6.1 cấp 1).
  */
-export default function KidTopBar({ subject = "num", title, progress, stars }) {
+export default function KidTopBar({ subject = "num", title, progress, stars, starBoxRef }) {
   const steps = progress?.total || 0;
   const done = Math.min(progress?.current || 0, steps);
 
@@ -41,7 +42,7 @@ export default function KidTopBar({ subject = "num", title, progress, stars }) {
 
       {typeof stars === "number" ? (
         // Giai đoạn 6 sẽ biến ô sao này thành lối vào phòng huy hiệu.
-        <span className="kid-topbar-stars" aria-label={`${stars} sao`}>
+        <span ref={starBoxRef} className="kid-topbar-stars" aria-label={`${stars} sao`}>
           <span aria-hidden="true">⭐</span>
           <strong>{stars}</strong>
         </span>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { request } from "../lib/api";
 import { recordLearningResult } from "../lib/learning";
 import { speakVietnamese } from "../lib/speech";
+import { celebrateCorrect, celebrateFinish } from "../lib/celebrate";
+import { sfx } from "../lib/sfx";
 import styles from "./AirDrawActivity.module.css";
 
 const MEDIAPIPE_HANDS_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
@@ -232,7 +234,6 @@ export default function AirDrawActivity({
   const [feedback, setFeedback] = useState("");
   const [prediction, setPrediction] = useState(null);
   const [score, setScore] = useState(null);
-  const [showFireworks, setShowFireworks] = useState(false);
 
   const videoRef = useRef(null);
   const drawingCanvasRef = useRef(null);
@@ -285,7 +286,6 @@ export default function AirDrawActivity({
     setFeedback("");
     setPrediction(null);
     setScore(null);
-    setShowFireworks(false);
   }, []);
 
   const clearDrawing = useCallback((status = "Đã xóa nét vẽ") => {
@@ -574,10 +574,16 @@ export default function AirDrawActivity({
     clearDrawing(nextMode === "guess" ? "Chế độ vẽ đoán" : "Chế độ vẽ theo hướng dẫn");
   }
 
-  function evaluateManualAnswer(item) {
+  function evaluateManualAnswer(item, buttonEl) {
     resetResult();
     const correct = item.id === target.id;
     setFeedback(correct ? "Đúng rồi!" : "Chưa đúng, thử lại nhé.");
+    if (correct) {
+      celebrateCorrect(buttonEl);
+      sfx.correct();
+    } else {
+      sfx.tryAgain();
+    }
     speakVietnamese(correct ? `Đúng rồi, đó là ${targetSpeech}` : "Thử lại nhé");
     logLearningResult({
       activity_key: "camera_guess",
@@ -684,10 +690,13 @@ export default function AirDrawActivity({
     setFeedback(`${nextScore} điểm`);
 
     if (nextScore > 90) {
-      setShowFireworks(true);
-      setTimeout(() => setShowFireworks(false), 2200);
+      // Dùng chung hệ chúc mừng ở Mục 6 thay cho pháo hoa CSS riêng.
+      const stop = celebrateFinish();
+      setTimeout(stop, 2200);
+      sfx.finish();
       speakVietnamese(`Tuyệt vời, ${nextScore} điểm`);
     } else {
+      sfx.tryAgain();
       speakVietnamese(`${nextScore} điểm, mình thử lại nhé`);
     }
 
@@ -811,14 +820,6 @@ export default function AirDrawActivity({
               onPointerLeave={handlePointerUp}
             />
             <canvas ref={overlayCanvasRef} className={styles.overlayCanvas} />
-            {showFireworks ? (
-              <div className={styles.fireworks} aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-            ) : null}
           </div>
 
           <div className={styles.statusRow}>
@@ -872,7 +873,7 @@ export default function AirDrawActivity({
               key={item.id}
               type="button"
               className={styles.answerButton}
-              onClick={() => evaluateManualAnswer(item)}
+              onClick={(event) => evaluateManualAnswer(item, event.currentTarget)}
               style={{ "--answer-color": item.color || "#5e74f6" }}
             >
               <span className={styles.answerPreview} aria-hidden="true">

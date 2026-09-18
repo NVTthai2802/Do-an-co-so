@@ -1732,3 +1732,304 @@ input {
   outline-offset: 1px;
   border-color: var(--brand-700);
 }
+
+/* ═══ GIAI ĐOẠN 3 – Làm bài và chúc mừng (Mục 6) ═══════════════ */
+
+/* Nhân vật + bong bóng. CHIỀU CAO CỐ ĐỊNH để hiện phản hồi không nhảy bố cục. */
+.mascot-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
+  margin: 10px 0;
+}
+
+.mascot {
+  width: 84px;
+  height: 84px;
+  flex: none;
+}
+
+.bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-height: 72px;
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--line);
+  color: var(--ink);
+  font: 700 clamp(1rem, 2.6vw, 1.2rem) / 1.4 var(--font-body);
+}
+
+.bubble::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin-top: -8px;
+  border: 8px solid transparent;
+  border-right-color: var(--line);
+}
+
+.bubble-hint {
+  color: var(--ink-soft);
+  font-style: normal;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+/* Câu hỏi cỡ lớn + nút loa đọc câu hỏi */
+.qcard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.qtext {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  color: var(--ink);
+  font: 800 clamp(2.4rem, 9vw, 4.5rem) / 1.1 var(--font-display);
+}
+
+.qspeak {
+  width: var(--tap);
+  height: var(--tap);
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--c400, var(--brand-400));
+  box-shadow: 0 5px 0 var(--c700, var(--brand-700));
+  color: var(--ink);
+  font-size: 1.6rem;
+  cursor: pointer;
+}
+
+.qspeak:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--c700, var(--brand-700));
+}
+
+.qspeak:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* 4 đáp án cùng một kiểu (Mục 4.3): nền trắng, viền + gờ theo màu bài học */
+.answer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+@media (min-width: 620px) {
+  .answer-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Đúng: nền --ok-400 và nảy lên (Mục 6.1 cấp 1) */
+.kbtn.is-ok {
+  --c400: var(--ok-400);
+  --c700: var(--ok-700);
+  background: var(--ok-400);
+  box-shadow: 0 6px 0 var(--ok-700);
+  animation: kidPop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes kidPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* Chưa đúng: rung ngang, chuyển --try-*, KHÔNG dùng đỏ (Mục 6.1) */
+.kbtn.is-try {
+  --c400: var(--try-400);
+  --c700: var(--try-700);
+  background: var(--try-50);
+  box-shadow: 0 6px 0 var(--try-400), inset 0 0 0 3px var(--try-400);
+  color: var(--try-700);
+  animation: kidShake 0.38s ease;
+}
+
+@keyframes kidShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* Sai lần 2: đáp án đúng viền nét đứt và nhấp nháy ĐÚNG 2 lần (Mục 6.1) */
+.kbtn.is-reveal {
+  outline: 4px dashed var(--ok-700);
+  outline-offset: 3px;
+  animation: kidBlink 1s steps(1, end) 2;
+}
+
+@keyframes kidBlink {
+  0%, 49% { background: var(--ok-50); }
+  50%, 100% { background: var(--surface); }
+}
+
+/* Đáp án đã thử sai thì vô hiệu, nhưng vẫn đọc được */
+.kbtn:disabled.is-spent {
+  opacity: 0.45;
+}
+
+/* Ngôi sao bay vào ô đếm sao. pointer-events:none – không chặn thao tác. */
+.fly-star {
+  position: fixed;
+  z-index: 80;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.65s cubic-bezier(0.3, 0.9, 0.4, 1), opacity 0.65s;
+}
+
+/* ── Cấp 3: hộp thoại tổng kết ─────────────────────────────────── */
+.reward-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(30, 42, 74, 0.55);
+}
+
+.reward-card {
+  width: min(460px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+
+.reward-card h2 {
+  margin: 0;
+  font: 800 2.2rem/1.1 var(--font-display);
+  color: var(--brand-700);
+}
+
+.reward-line {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+}
+
+.reward-stars {
+  display: flex;
+  gap: 10px;
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.reward-star {
+  filter: grayscale(1);
+  opacity: 0.3;
+  transform: scale(0.8);
+  transition: transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1), opacity 0.3s, filter 0.3s;
+}
+
+.reward-star.on {
+  filter: none;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.reward-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* ── Công tắc âm thanh và hiệu ứng (Mục 6.1, quy tắc an toàn) ──── */
+.kid-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.kid-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 0.95rem/1 var(--font-body);
+  cursor: pointer;
+}
+
+.kid-switch[aria-pressed="true"] {
+  border-color: var(--ok-700);
+  background: var(--ok-50);
+  color: var(--ok-700);
+}
+
+.kid-switch:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Thẻ mở camera – ẩn mặc định (Mục 5.4) */
+.camera-toggle-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-3) var(--space-4);
+  border: 2px dashed var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 1.05rem/1.3 var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.camera-toggle-card:hover {
+  border-color: var(--brand-400);
+}
+
+.camera-toggle-card:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.camera-toggle-card span[aria-hidden="true"] {
+  font-size: 1.8rem;
+}
